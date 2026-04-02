@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import { loginAction, type LoginState } from "@/app/actions/login";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ const initial: LoginState = {};
 export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const [showPassword, setShowPassword] = useState(false);
 
   const [state, formAction, pending] = useActionState(loginAction, initial);
 
@@ -32,13 +34,24 @@ export function LoginForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Пароль</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
       </div>
       {state?.error && (
         <p className="text-sm text-destructive" role="alert">

@@ -45,10 +45,18 @@ export async function getActorStats(): Promise<ActorStatsRow[]> {
   ensureAdmin(session);
 
   const actors = await prisma.actor.findMany({
-    include: {
+    select: {
+      id: true,
+      name: true,
+      hourlyRate: true,
       assignments: {
-        include: {
-          slot: true,
+        select: {
+          slot: {
+            select: {
+              startTime: true,
+              endTime: true,
+            },
+          },
         },
       },
     },
@@ -86,14 +94,17 @@ export async function getActorSalaryReport(): Promise<ActorSalaryRow[]> {
   ensureAdmin(session);
 
   const actors = await prisma.actor.findMany({
-    include: {
-      assignments: true,
+    select: {
+      id: true,
+      name: true,
+      hourlyRate: true,
+      _count: { select: { assignments: true } },
     },
     orderBy: { name: "asc" },
   });
 
   return actors.map((actor) => {
-    const gamesCount = actor.assignments.length;
+    const gamesCount = actor._count.assignments;
     const earnedRub = Number(actor.hourlyRate) * gamesCount;
     return {
       actorId: actor.id,

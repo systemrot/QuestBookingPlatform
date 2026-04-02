@@ -91,29 +91,6 @@ export async function createBooking(slotId: string) {
   }
 }
 
-export async function createPayment(bookingId: string) {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "USER") {
-    return { error: "Для оплаты нужно войти как пользователь." };
-  }
-
-  const booking = await prisma.booking.findFirst({
-    where: { id: bookingId, userId: session.user.id },
-  });
-  if (!booking) {
-    return { error: "Бронирование не найдено." };
-  }
-
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data: { status: "PENDING", paymentId: `mock_${Date.now()}` },
-  });
-
-  revalidatePath("/profile");
-  revalidatePath("/bookings");
-  return { success: true as const };
-}
-
 export async function completeMockPayment(bookingId: string) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "USER") {

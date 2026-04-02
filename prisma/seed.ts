@@ -63,7 +63,7 @@ async function main() {
       title: "Потерянная крипта",
       description:
         "Подземное приключение в духе эскейп-рума под старым собором: факелы, загадки и таймер.",
-      image: "https://images.unsplash.com/photo-1523906630133-f6934a1ab2b9?w=1200&q=80",
+      image: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80",
       price: 49.99,
       slotHours: [10, 14, 18] as const,
     },

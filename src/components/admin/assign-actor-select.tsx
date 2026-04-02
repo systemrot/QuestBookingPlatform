@@ -31,6 +31,7 @@ export function AssignActorSelect({ slotId, actors, currentActorId }: Props) {
     <div className="space-y-1">
       <Select
         value={value}
+        itemToStringLabel={(id) => actors.find((a) => a.id === id)?.name ?? id}
         onValueChange={(next) => {
           if (!next) return;
           setValue(next);

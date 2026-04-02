@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { completeMockPayment, createPayment } from "@/app/actions/booking";
+import { completeMockPayment } from "@/app/actions/booking";
+import { startBookingPayment } from "@/app/actions/payment";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -20,10 +21,15 @@ export function PayBookingButton({ bookingId, disabled }: Props) {
     if (disabled || loading) return;
     setLoading(true);
 
-    const pending = await createPayment(bookingId);
+    const pending = await startBookingPayment(bookingId);
     if ("error" in pending && pending.error) {
-      toast.error("Ошибка оплаты");
+      toast.error(pending.error);
       setLoading(false);
+      return;
+    }
+
+    if ("redirectUrl" in pending) {
+      window.location.assign(pending.redirectUrl);
       return;
     }
 
@@ -43,7 +49,7 @@ export function PayBookingButton({ bookingId, disabled }: Props) {
 
   return (
     <Button size="sm" onClick={onPay} disabled={disabled || loading}>
-      {loading ? "Оплата..." : "Оплатить"}
+      {loading ? "Подождите..." : "Оплатить"}
     </Button>
   );
 }

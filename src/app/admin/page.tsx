@@ -31,10 +31,16 @@ export default async function AdminPage() {
           isNot: null,
         },
       },
-      include: {
-        quest: true,
-        booking: true,
-        assignments: true,
+      select: {
+        id: true,
+        startTime: true,
+        quest: { select: { title: true } },
+        booking: { select: { status: true } },
+        assignments: {
+          take: 1,
+          orderBy: { id: "asc" },
+          select: { actorId: true },
+        },
       },
       orderBy: { startTime: "asc" },
     }),
@@ -91,6 +97,7 @@ export default async function AdminPage() {
                     </TableCell>
                     <TableCell>
                       <AssignActorSelect
+                        key={`${slot.id}-${slot.assignments[0]?.actorId ?? "none"}`}
                         slotId={slot.id}
                         actors={actors}
                         currentActorId={slot.assignments[0]?.actorId ?? null}

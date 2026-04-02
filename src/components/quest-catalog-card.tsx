@@ -41,6 +41,9 @@ type SessionInfo = {
   email?: string | null;
 } | null;
 
+const QUEST_IMAGE_FALLBACK =
+  "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80";
+
 export function QuestCatalogCard({
   quest,
   session,
@@ -54,6 +57,11 @@ export function QuestCatalogCard({
   const [loading, setLoading] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [pendingSlot, setPendingSlot] = React.useState<string | null>(null);
+  const [imageSrc, setImageSrc] = React.useState(quest.image ?? QUEST_IMAGE_FALLBACK);
+
+  React.useEffect(() => {
+    setImageSrc(quest.image ?? QUEST_IMAGE_FALLBACK);
+  }, [quest.image]);
 
   const loadSlots = React.useCallback(async () => {
     if (!date || !session || session.role !== "USER") return;
@@ -95,19 +103,18 @@ export function QuestCatalogCard({
     <>
       <Card className="overflow-hidden border-border/60 bg-card/50 shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:shadow-md">
         <div className="relative aspect-[16/10] w-full bg-muted">
-          {quest.image ? (
-            <Image
-              src={quest.image}
-              alt={quest.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              Нет изображения
-            </div>
-          )}
+          <Image
+            src={imageSrc}
+            alt={quest.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={() => {
+              if (imageSrc !== QUEST_IMAGE_FALLBACK) {
+                setImageSrc(QUEST_IMAGE_FALLBACK);
+              }
+            }}
+          />
           <Badge className="absolute right-3 top-3 bg-background/90 text-foreground backdrop-blur">
             От {formatRub(quest.price)}
           </Badge>

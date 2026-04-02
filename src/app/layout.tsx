@@ -3,6 +3,7 @@ import { Geist_Mono, Montserrat } from "next/font/google";
 
 import { auth } from "@/auth";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { Footer } from "@/components/Footer";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -37,9 +38,17 @@ export default async function RootLayout({
       className={`dark ${montserrat.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col bg-transparent text-foreground">
+        <div aria-hidden className="cinematic-bg">
+          <div className="cinematic-bg-image" />
+          <div className="cinematic-bg-vignette" />
+          <div className="cinematic-bg-overlay" />
+        </div>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">{children}</div>
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </div>
         {session?.user?.role === "USER" ? <ChatWidget /> : null}
         <Toaster richColors />
       </body>

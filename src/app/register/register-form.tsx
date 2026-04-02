@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 import { registerUser, type RegisterState } from "@/app/actions/register";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Label } from "@/components/ui/label";
 const initial: RegisterState = {};
 
 export function RegisterForm() {
+  const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(registerUser, initial);
 
   if (state?.success) {
@@ -50,14 +52,25 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Пароль</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="new-password"
-          minLength={8}
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            minLength={8}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
         {state?.fieldErrors?.password?.[0] && (
           <p className="text-xs text-destructive">{state.fieldErrors.password[0]}</p>
         )}
