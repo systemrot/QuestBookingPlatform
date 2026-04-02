@@ -1,13 +1,120 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Quest Booking Platform — PostgreSQL (e.g. Supabase)
+// Run: npx prisma migrate dev
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  age       Int?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings           Booking[]
+  messagesSent       ChatMessage[] @relation("MessageSender")
+  messagesReceived   ChatMessage[] @relation("MessageReceiver")
+}
+
+model Quest {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  image       String?
+  price       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slots Slot[]
+}
+
+model Slot {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  isBooked  Boolean  @default(false)
+  questId   String
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quest       Quest        @relation(fields: [questId], references: [id], onDelete: Cascade)
+  booking     Booking?
+  assignments Assignment[]
+
+  @@index([questId])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  userId    String
+  slotId    String        @unique
+  status    BookingStatus @default(PENDING)
+  paymentId String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Actor {
+  id         String   @id @default(cuid())
+  name       String
+  hourlyRate Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  assignments Assignment[]
+}
+
+model Assignment {
+  id      String @id @default(cuid())
+  actorId String
+  slotId  String
+
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  slot  Slot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, slotId])
+  @@index([slotId])
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  text       String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([senderId, receiverId])
 }
