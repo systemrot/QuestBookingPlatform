@@ -157,6 +157,45 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
     [threads, activeUserId],
   );
 
+  const threadListContent = useMemo(
+    () =>
+      threads.length === 0 ? (
+        <p className="p-2 text-sm text-muted-foreground">Пока нет сообщений.</p>
+      ) : (
+        threads.map((thread) => (
+          <button
+            key={thread.userId}
+            className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition ${
+              activeUserId === thread.userId ? "border-primary bg-primary/10" : "border-border/60 hover:bg-accent/40"
+            }`}
+            onClick={() => {
+              startSwitchTransition(() => {
+                setConversation([]);
+                setConversationLoading(true);
+                setActiveUserId(thread.userId);
+                router.replace(`/admin/messages?userId=${thread.userId}`, { scroll: false });
+              });
+            }}
+          >
+            <div className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold">
+              {thread.userName.trim().charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate font-medium">{thread.userName}</p>
+                {thread.unreadCount > 0 ? (
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-destructive" />
+                ) : null}
+              </div>
+              <p className="truncate text-sm text-muted-foreground">{thread.lastText}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{formatRu(new Date(thread.lastAt), "d MMMM, HH:mm")}</p>
+            </div>
+          </button>
+        ))
+      ),
+    [threads, activeUserId, router, startSwitchTransition],
+  );
+
   const onSend = async () => {
     if (!activeUserId || !text.trim() || sending) return;
     setSending(true);
@@ -181,43 +220,11 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
           <CardDescription>Пользователи и последние сообщения.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[70vh] px-4 pb-4">
-            <div className="space-y-2 pt-1">
-              {threads.length === 0 ? (
-                <p className="p-2 text-sm text-muted-foreground">Пока нет сообщений.</p>
-              ) : (
-                threads.map((thread) => (
-                  <button
-                    key={thread.userId}
-                    className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition ${
-                      activeUserId === thread.userId ? "border-primary bg-primary/10" : "border-border/60 hover:bg-accent/40"
-                    }`}
-                    onClick={() => {
-                      startSwitchTransition(() => {
-                        setConversation([]);
-                        setConversationLoading(true);
-                        setActiveUserId(thread.userId);
-                        router.replace(`/admin/messages?userId=${thread.userId}`, { scroll: false });
-                      });
-                    }}
-                  >
-                    <div className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold">
-                      {thread.userName.trim().charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate font-medium">{thread.userName}</p>
-                        {thread.unreadCount > 0 ? (
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-destructive" />
-                        ) : null}
-                      </div>
-                      <p className="truncate text-sm text-muted-foreground">{thread.lastText}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{formatRu(new Date(thread.lastAt), "d MMMM, HH:mm")}</p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+          <div className="max-h-[70vh] overflow-y-auto overscroll-contain px-4 pb-4 lg:hidden">
+            <div className="space-y-2 pt-1">{threadListContent}</div>
+          </div>
+          <ScrollArea className="hidden h-[70vh] px-4 pb-4 lg:block">
+            <div className="space-y-2 pt-1">{threadListContent}</div>
           </ScrollArea>
         </CardContent>
       </Card>
