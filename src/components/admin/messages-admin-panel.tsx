@@ -33,9 +33,20 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
   const [sending, setSending] = useState(false);
   const [conversationLoading, setConversationLoading] = useState(false);
   const [isPendingSwitch, startSwitchTransition] = useTransition();
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const messagesScrollRootRef = useRef<HTMLDivElement | null>(null);
+  const prevConversationIdsRef = useRef<string>("");
+  const inputFocusedRef = useRef(false);
+  const forceScrollBottomRef = useRef(false);
   const requestIdRef = useRef(0);
   const pollingUserIdRef = useRef<string | null>(null);
+
+  const scrollMessagesToBottom = () => {
+    const viewport = messagesScrollRootRef.current?.querySelector<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]',
+    );
+    if (!viewport) return;
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior: "auto" });
+  };
 
   const mergeThreads = (prev: AdminThread[], next: AdminThread[]) => {
     const prevById = new Map(prev.map((row) => [row.userId, row]));
@@ -118,10 +129,28 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
   }, [activeUserId]);
 
   useEffect(() => {
-    if (!conversationLoading) {
-      endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    prevConversationIdsRef.current = "";
+  }, [activeUserId]);
+
+  useEffect(() => {
+    if (conversationLoading || !activeUserId) return;
+
+    const ids = conversation.map((m) => m.id).join(",");
+
+    if (forceScrollBottomRef.current) {
+      forceScrollBottomRef.current = false;
+      prevConversationIdsRef.current = ids;
+      requestAnimationFrame(() => scrollMessagesToBottom());
+      return;
     }
-  }, [conversation, conversationLoading]);
+
+    if (ids === prevConversationIdsRef.current) return;
+    prevConversationIdsRef.current = ids;
+
+    if (inputFocusedRef.current) return;
+
+    requestAnimationFrame(() => scrollMessagesToBottom());
+  }, [conversation, conversationLoading, activeUserId]);
 
   const activeUserName = useMemo(
     () => threads.find((t) => t.userId === activeUserId)?.userName ?? "Выберите диалог",
@@ -138,6 +167,7 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
       return;
     }
     setText("");
+    forceScrollBottomRef.current = true;
     await loadConversation(activeUserId, false);
     await loadThreads();
     setSending(false);
@@ -200,40 +230,47 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 pt-0">
-          <ScrollArea className="h-[62vh] rounded-md border border-border/70 p-2">
-            {!activeUserId ? (
-              <p className="p-2 text-sm text-muted-foreground">Выберите чат для начала общения</p>
-            ) : conversationLoading ? (
-              <div className="space-y-2 p-2">
-                <Skeleton className="h-14 w-2/3" />
-                <Skeleton className="ml-auto h-14 w-1/2" />
-                <Skeleton className="h-14 w-3/4" />
-                <Skeleton className="ml-auto h-14 w-2/5" />
-              </div>
-            ) : conversation.length === 0 ? (
-              <p className="p-2 text-sm text-muted-foreground">Пока нет сообщений в этом чате.</p>
-            ) : (
-              <div className="space-y-2">
-                {conversation.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${
-                      m.fromAdmin
-                        ? "ml-auto bg-primary text-primary-foreground"
-                        : "mr-auto bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    <div>{m.text}</div>
-                    <div className="mt-1 text-[11px] opacity-80">{formatRu(new Date(m.createdAt), "d MMM, HH:mm")}</div>
-                  </div>
-                ))}
-                <div ref={endRef} />
-              </div>
-            )}
-          </ScrollArea>
+          <div ref={messagesScrollRootRef}>
+            <ScrollArea className="h-[62vh] rounded-md border border-border/70 p-2">
+              {!activeUserId ? (
+                <p className="p-2 text-sm text-muted-foreground">Выберите чат для начала общения</p>
+              ) : conversationLoading ? (
+                <div className="space-y-2 p-2">
+                  <Skeleton className="h-14 w-2/3" />
+                  <Skeleton className="ml-auto h-14 w-1/2" />
+                  <Skeleton className="h-14 w-3/4" />
+                  <Skeleton className="ml-auto h-14 w-2/5" />
+                </div>
+              ) : conversation.length === 0 ? (
+                <p className="p-2 text-sm text-muted-foreground">Пока нет сообщений в этом чате.</p>
+              ) : (
+                <div className="space-y-2">
+                  {conversation.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${
+                        m.fromAdmin
+                          ? "ml-auto bg-primary text-primary-foreground"
+                          : "mr-auto bg-secondary text-secondary-foreground"
+                      }`}
+                    >
+                      <div>{m.text}</div>
+                      <div className="mt-1 text-[11px] opacity-80">{formatRu(new Date(m.createdAt), "d MMM, HH:mm")}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
           <div className="flex gap-2">
             <Input
               value={text}
+              onFocus={() => {
+                inputFocusedRef.current = true;
+              }}
+              onBlur={() => {
+                inputFocusedRef.current = false;
+              }}
               onChange={(e) => setText(e.target.value)}
               placeholder="Введите сообщение..."
               onKeyDown={(e) => {
