@@ -1,5 +1,5 @@
 import { getActorStats } from "@/app/actions/admin";
-import { AssignActorSelect } from "@/components/admin/assign-actor-select";
+import { AssignActorsPicker } from "@/components/admin/assign-actors-picker";
 import { prisma } from "@/lib/prisma";
 import { formatRub, formatRu } from "@/lib/locale";
 import {
@@ -37,9 +37,11 @@ export default async function AdminPage() {
         quest: { select: { title: true } },
         booking: { select: { status: true } },
         assignments: {
-          take: 1,
           orderBy: { id: "asc" },
-          select: { actorId: true },
+          select: {
+            actorId: true,
+            actor: { select: { id: true, name: true } },
+          },
         },
       },
       orderBy: { startTime: "asc" },
@@ -80,7 +82,7 @@ export default async function AdminPage() {
                   <TableHead>Квест</TableHead>
                   <TableHead>Начало</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead>Актер</TableHead>
+                  <TableHead>Актёры</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -96,11 +98,14 @@ export default async function AdminPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <AssignActorSelect
-                        key={`${slot.id}-${slot.assignments[0]?.actorId ?? "none"}`}
+                      <AssignActorsPicker
+                        key={`${slot.id}-${slot.assignments.map((a) => a.actorId).join(",")}`}
                         slotId={slot.id}
                         actors={actors}
-                        currentActorId={slot.assignments[0]?.actorId ?? null}
+                        assignedActors={slot.assignments.map((a) => ({
+                          id: a.actor.id,
+                          name: a.actor.name,
+                        }))}
                       />
                     </TableCell>
                   </TableRow>

@@ -5,6 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 import { loginAction, type LoginState } from "@/app/actions/login";
+import {
+  clampEmailInput,
+  clampPasswordInput,
+  FIELD_LIMITS,
+  safeCallbackUrl,
+} from "@/lib/field-limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +19,9 @@ const initial: LoginState = {};
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl") ?? "/");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [state, formAction, pending] = useActionState(loginAction, initial);
@@ -29,8 +37,14 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
+          value={email}
+          maxLength={FIELD_LIMITS.email.max}
+          onChange={(e) => setEmail(clampEmailInput(e.target.value))}
           placeholder="ivan@example.com"
         />
+        {state?.fieldErrors?.email?.[0] && (
+          <p className="text-xs text-destructive">{state.fieldErrors.email[0]}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Пароль</Label>
@@ -41,17 +55,23 @@ export function LoginForm() {
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
+            value={password}
+            maxLength={FIELD_LIMITS.password.max}
+            onChange={(e) => setPassword(clampPasswordInput(e.target.value))}
             className="pr-10"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         </div>
+        {state?.fieldErrors?.password?.[0] && (
+          <p className="text-xs text-destructive">{state.fieldErrors.password[0]}</p>
+        )}
       </div>
       {state?.error && (
         <p className="text-sm text-destructive" role="alert">

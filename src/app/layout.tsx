@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Geist_Mono, Montserrat } from "next/font/google";
 
 import { auth } from "@/auth";
@@ -8,6 +9,9 @@ import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
+
+const CINEMATIC_BG_IMAGE =
+  "https://images.unsplash.com/photo-1741993348688-544565cfcfe3?auto=format&fit=crop&w=2400&q=85";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -40,9 +44,21 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-transparent text-foreground">
         <div aria-hidden className="cinematic-bg">
-          <div className="cinematic-bg-image" />
+          <Image
+            src={CINEMATIC_BG_IMAGE}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            sizes="100vw"
+            quality={85}
+            className="cinematic-bg-image"
+          />
           <div className="cinematic-bg-vignette" />
+          <div className="cinematic-bg-grade" />
           <div className="cinematic-bg-overlay" />
+          <div className="cinematic-bg-grain" />
+          <div className="cinematic-bg-scanlines" />
         </div>
         <SiteHeader />
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">

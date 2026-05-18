@@ -13,23 +13,47 @@ function ensureAdmin(session: SessionLike) {
   }
 }
 
-export async function assignActorToSlot(actorId: string, slotId: string) {
+export async function addActorToSlot(actorId: string, slotId: string) {
   const session = await auth();
   ensureAdmin(session);
 
   if (!actorId || !slotId) {
-    return { error: "Нужно выбрать актера и слот." };
+    return { error: "Нужно выбрать актёра и слот." };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.assignment.deleteMany({ where: { slotId } });
-    await tx.assignment.create({
-      data: { actorId, slotId },
-    });
+  const [actor, slot] = await Promise.all([
+    prisma.actor.findUnique({ where: { id: actorId }, select: { id: true } }),
+    prisma.slot.findUnique({ where: { id: slotId }, select: { id: true } }),
+  ]);
+
+  if (!actor || !slot) {
+    return { error: "Актёр или слот не найден." };
+  }
+
+  await prisma.assignment.upsert({
+    where: { actorId_slotId: { actorId, slotId } },
+    create: { actorId, slotId },
+    update: {},
   });
 
   revalidatePath("/admin");
-  return { success: true };
+  return { success: true as const };
+}
+
+export async function removeActorFromSlot(actorId: string, slotId: string) {
+  const session = await auth();
+  ensureAdmin(session);
+
+  if (!actorId || !slotId) {
+    return { error: "Нужно указать актёра и слот." };
+  }
+
+  await prisma.assignment.deleteMany({
+    where: { actorId, slotId },
+  });
+
+  revalidatePath("/admin");
+  return { success: true as const };
 }
 
 export type ActorStatsRow = {

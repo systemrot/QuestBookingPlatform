@@ -5,14 +5,24 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
 import { registerUser, type RegisterState } from "@/app/actions/register";
+import {
+  clampEmailInput,
+  clampNameInput,
+  clampPasswordInput,
+  FIELD_LIMITS,
+} from "@/lib/field-limits";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { RuPhoneInput } from "@/components/ui/ru-phone-input";
 import { Label } from "@/components/ui/label";
 
 const initial: RegisterState = {};
 
 export function RegisterForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(registerUser, initial);
 
@@ -31,7 +41,16 @@ export function RegisterForm() {
     <form action={formAction} className="space-y-4 rounded-xl border border-border/80 bg-card/40 p-6 shadow-sm">
       <div className="space-y-2">
         <Label htmlFor="name">Имя</Label>
-        <Input id="name" name="name" required autoComplete="name" placeholder="Ваше имя" />
+        <Input
+          id="name"
+          name="name"
+          required
+          autoComplete="name"
+          value={name}
+          maxLength={FIELD_LIMITS.name.max}
+          onChange={(e) => setName(clampNameInput(e.target.value))}
+          placeholder="Ваше имя"
+        />
         {state?.fieldErrors?.name?.[0] && (
           <p className="text-xs text-destructive">{state.fieldErrors.name[0]}</p>
         )}
@@ -44,6 +63,9 @@ export function RegisterForm() {
           type="email"
           required
           autoComplete="email"
+          value={email}
+          maxLength={FIELD_LIMITS.email.max}
+          onChange={(e) => setEmail(clampEmailInput(e.target.value))}
           placeholder="ivan@example.com"
         />
         {state?.fieldErrors?.email?.[0] && (
@@ -59,13 +81,16 @@ export function RegisterForm() {
             type={showPassword ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={8}
+            value={password}
+            minLength={FIELD_LIMITS.password.min}
+            maxLength={FIELD_LIMITS.password.max}
+            onChange={(e) => setPassword(clampPasswordInput(e.target.value))}
             className="pr-10"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -77,7 +102,10 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="phone">Телефон (необязательно)</Label>
-        <Input id="phone" name="phone" type="tel" autoComplete="tel" />
+        <RuPhoneInput id="phone" />
+        {state?.fieldErrors?.phone?.[0] && (
+          <p className="text-xs text-destructive">{state.fieldErrors.phone[0]}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="age">Возраст (необязательно)</Label>

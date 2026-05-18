@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clampChatMessageInput, FIELD_LIMITS } from "@/lib/field-limits";
 import { formatRu } from "@/lib/locale";
 
 type Props = {
@@ -165,7 +166,7 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
         threads.map((thread) => (
           <button
             key={thread.userId}
-            className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition ${
+            className={`flex w-full cursor-pointer items-start gap-3 rounded-md border p-3 text-left transition-colors ${
               activeUserId === thread.userId ? "border-primary bg-primary/10" : "border-border/60 hover:bg-accent/40"
             }`}
             onClick={() => {
@@ -278,7 +279,8 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
               onBlur={() => {
                 inputFocusedRef.current = false;
               }}
-              onChange={(e) => setText(e.target.value)}
+              maxLength={FIELD_LIMITS.chatMessage.max}
+              onChange={(e) => setText(clampChatMessageInput(e.target.value))}
               placeholder="Введите сообщение..."
               onKeyDown={(e) => {
                 if (e.key === "Enter") {

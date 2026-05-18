@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { updateProfileAction, type UpdateProfileState } from "@/app/actions/profile";
+import { FIELD_LIMITS } from "@/lib/field-limits";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RuPhoneInput } from "@/components/ui/ru-phone-input";
 import { Label } from "@/components/ui/label";
 
 const initialState: UpdateProfileState = {};
@@ -39,14 +41,14 @@ export function EditProfileDialog({ name, age, phone }: Props) {
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Имя</Label>
-            <Input id="name" name="name" defaultValue={name} required />
+            <Input id="name" name="name" defaultValue={name} required maxLength={FIELD_LIMITS.name.max} />
             {state?.fieldErrors?.name?.[0] && (
               <p className="text-xs text-destructive">{state.fieldErrors.name[0]}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Телефон</Label>
-            <Input id="phone" name="phone" defaultValue={phone ?? ""} />
+            <RuPhoneInput id="phone" key={phone ?? "empty"} defaultValue={phone} />
             {state?.fieldErrors?.phone?.[0] && (
               <p className="text-xs text-destructive">{state.fieldErrors.phone[0]}</p>
             )}

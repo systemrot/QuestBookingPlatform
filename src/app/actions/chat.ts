@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { parseChatMessage } from "@/lib/field-limits";
 import { prisma } from "@/lib/prisma";
 
 type SessionLike = { user?: { id?: string; role?: string } } | null;
@@ -78,14 +79,16 @@ export async function sendUserChatMessage(text: string) {
   const adminId = await resolveAdminId();
   if (!adminId) return { error: "Администратор пока недоступен." };
 
-  const trimmed = text.trim();
-  if (!trimmed) return { error: "Введите сообщение." };
+  const parsed = parseChatMessage(text);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Некорректное сообщение." };
+  }
 
   await prisma.chatMessage.create({
     data: {
       senderId: userId,
       receiverId: adminId,
-      text: trimmed,
+      text: parsed.data,
       isRead: false,
     },
   });
@@ -187,14 +190,16 @@ export async function sendAdminChatMessage(userId: string, text: string) {
   const adminId = session?.user?.id;
   if (!adminId) throw new Error("Недостаточно прав");
 
-  const trimmed = text.trim();
-  if (!trimmed) return { error: "Введите сообщение." };
+  const parsed = parseChatMessage(text);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Некорректное сообщение." };
+  }
 
   await prisma.chatMessage.create({
     data: {
       senderId: adminId,
       receiverId: userId,
-      text: trimmed,
+      text: parsed.data,
       isRead: false,
     },
   });
