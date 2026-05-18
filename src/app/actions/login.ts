@@ -1,27 +1,34 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { z } from "zod";
 
 import { signIn } from "@/auth";
+import { emailField, loginPasswordField, safeCallbackUrl } from "@/lib/field-limits";
 
-export type LoginState = { error?: string };
+export type LoginState = { error?: string; fieldErrors?: Record<string, string[]> };
 
-function safeCallbackUrl(url: string) {
-  if (!url.startsWith("/") || url.startsWith("//")) return "/";
-  return url;
-}
+const loginSchema = z.object({
+  email: emailField,
+  password: loginPasswordField,
+});
 
 export async function loginAction(
   _prev: LoginState | undefined,
   formData: FormData
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
   const callbackUrl = safeCallbackUrl(String(formData.get("callbackUrl") ?? "/"));
 
-  if (!email || !password) {
-    return { error: "Введите email и пароль." };
+  const parsed = loginSchema.safeParse({
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
+
+  const { email, password } = parsed.data;
 
   try {
     await signIn("credentials", {

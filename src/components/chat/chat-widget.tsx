@@ -5,6 +5,7 @@ import { MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { getUserChatMessages, sendUserChatMessage, type ChatMessageDto } from "@/app/actions/chat";
+import { clampChatMessageInput, FIELD_LIMITS } from "@/lib/field-limits";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,8 @@ export function ChatWidget() {
             <div className="flex gap-2">
               <Input
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                maxLength={FIELD_LIMITS.chatMessage.max}
+                onChange={(e) => setText(clampChatMessageInput(e.target.value))}
                 placeholder="Введите сообщение..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {

@@ -3,13 +3,15 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+import { emailField, nameField, passwordField } from "@/lib/field-limits";
 import { prisma } from "@/lib/prisma";
+import { parseOptionalRuPhone } from "@/lib/ru-phone";
 
 const schema = z.object({
-  name: z.string().min(1, "Укажите имя").max(120),
-  email: z.string().email("Некорректный email"),
-  password: z.string().min(8, "Минимум 8 символов"),
-  phone: z.string().max(40, "Телефон слишком длинный").optional(),
+  name: nameField,
+  email: emailField,
+  password: passwordField,
+  phone: z.string().optional(),
   age: z
     .number()
     .int("Возраст должен быть целым числом")
@@ -39,12 +41,16 @@ export async function registerUser(
   }
 
   const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const phoneParsed = parseOptionalRuPhone(phoneRaw);
+  if (!phoneParsed.ok) {
+    return { fieldErrors: { phone: [phoneParsed.message] } };
+  }
 
   const parsed = schema.safeParse({
     name: String(formData.get("name") ?? ""),
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
-    phone: phoneRaw === "" ? undefined : phoneRaw,
+    phone: phoneParsed.value ?? undefined,
     age,
   });
 

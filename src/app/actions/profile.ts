@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { auth } from "@/auth";
+import { nameField } from "@/lib/field-limits";
 import { prisma } from "@/lib/prisma";
+import { parseOptionalRuPhone } from "@/lib/ru-phone";
 
 const profileSchema = z.object({
-  name: z.string().min(1, "Укажите имя").max(120),
-  phone: z.string().max(40, "Телефон слишком длинный").optional(),
+  name: nameField,
+  phone: z.string().optional(),
   age: z
     .number()
     .int("Возраст должен быть целым числом")
@@ -43,10 +45,14 @@ export async function updateProfileAction(
   }
 
   const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const phoneParsed = parseOptionalRuPhone(phoneRaw);
+  if (!phoneParsed.ok) {
+    return { fieldErrors: { phone: [phoneParsed.message] } };
+  }
 
   const parsed = profileSchema.safeParse({
     name: String(formData.get("name") ?? ""),
-    phone: phoneRaw === "" ? undefined : phoneRaw,
+    phone: phoneParsed.value ?? undefined,
     age,
   });
 

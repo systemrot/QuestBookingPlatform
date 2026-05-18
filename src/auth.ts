@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { authConfig } from "@/auth.config";
+import { emailField, loginPasswordField } from "@/lib/field-limits";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -17,8 +18,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         const parsed = z
           .object({
-            email: z.string().email(),
-            password: z.string().min(1),
+            email: emailField,
+            password: loginPasswordField,
           })
           .safeParse(credentials);
         if (!parsed.success) return null;

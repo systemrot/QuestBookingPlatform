@@ -5,6 +5,7 @@ import { EditProfileDialog } from "@/components/profile/edit-profile-dialog";
 import { PayBookingButton } from "@/components/profile/pay-booking-button";
 import { prisma } from "@/lib/prisma";
 import { formatRu } from "@/lib/locale";
+import { displayRuPhoneFromStored } from "@/lib/ru-phone";
 import {
   Card,
   CardContent,
@@ -86,7 +87,9 @@ export default async function ProfilePage() {
           </div>
           <div className="flex justify-between gap-4 border-b border-border/60 py-2">
             <span className="text-muted-foreground">Телефон</span>
-            <span className="text-right font-medium">{user.phone ?? "—"}</span>
+            <span className="text-right font-medium">
+              {user.phone ? displayRuPhoneFromStored(user.phone) : "—"}
+            </span>
           </div>
           <div className="flex justify-between gap-4 border-b border-border/60 py-2">
             <span className="text-muted-foreground">Возраст</span>
