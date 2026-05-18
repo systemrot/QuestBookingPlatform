@@ -165,7 +165,7 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
         threads.map((thread) => (
           <button
             key={thread.userId}
-            className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition ${
+            className={`flex w-full cursor-pointer items-start gap-3 rounded-md border p-3 text-left transition-colors ${
               activeUserId === thread.userId ? "border-primary bg-primary/10" : "border-border/60 hover:bg-accent/40"
             }`}
             onClick={() => {
