@@ -45,7 +45,7 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
 
   const provider = getPaymentProvider();
   const base = getAppBaseUrl();
-  const amount = Number(booking.slot.price).toFixed(2);
+  const amount = "1000.00"; //депозит
   const description = `Квест: ${booking.slot.quest.title}`;
 
   if (provider === "mock") {
@@ -69,6 +69,8 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
       description,
       returnUrl: `${base}/payment/return`,
       bookingId,
+customerEmail: booking.user.email ??
+"no-reply@nekvest.ru",
     });
     if ("error" in created) {
       return { error: created.error };
@@ -119,3 +121,5 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
 
   return { error: "Платёжный провайдер не настроен." };
 }
+
+
