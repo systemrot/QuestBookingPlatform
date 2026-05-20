@@ -10,7 +10,7 @@ export const siteConfig = {
   /** Соцсети — подставьте свои каналы/группы */
   social: {
     telegram: "https://t.me/questbook",
-    vk: "https://vk.com/questbook",
+    vk: "https://vk.com/nekvest",
   },
 } as const;
 
