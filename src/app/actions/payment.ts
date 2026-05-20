@@ -45,7 +45,7 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
 
   const provider = getPaymentProvider();
   const base = getAppBaseUrl();
-  const amount = "1000.00"; //депозит
+  const amount = "500.00"; //депозит
   const description = `Квест: ${booking.slot.quest.title}`;
 
   if (provider === "mock") {
@@ -121,5 +121,6 @@ customerEmail: booking.user.email ??
 
   return { error: "Платёжный провайдер не настроен." };
 }
+
 
 
