@@ -5,12 +5,16 @@ import bcrypt from "bcryptjs";
 
 import { PrismaClient } from "../src/generated/prisma";
 
-const url = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
-if (!url) {
-  throw new Error("DATABASE_URL or DIRECT_URL is required for seeding");
+function getDatabaseUrl(): string {
+  const connectionString = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL or DIRECT_URL is required for seeding");
+  }
+  return connectionString;
 }
 
 function createPrismaClient() {
+  const url = getDatabaseUrl();
   return url.startsWith("postgresql://") || url.startsWith("postgres://")
     ? new PrismaClient({
         adapter: new PrismaPg({ connectionString: url }),
