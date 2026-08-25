@@ -264,7 +264,12 @@ export function QuestCatalogCard({
                   Бронирование
                 </p>
 
-                {!session && (
+                {!session?.role || session.role !== "USER" ? (
+                  session?.role === "ADMIN" ? (
+                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                    Администратор не может оформить бронирование. Войдите как клиент.
+                  </p>
+                  ) : (
                   <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
                     <p className="mb-3 text-muted-foreground">
                       Войдите, чтобы выбрать дату и оформить бронирование.
@@ -281,15 +286,8 @@ export function QuestCatalogCard({
                       </Link>
                     </div>
                   </div>
-                )}
-
-                {session?.role === "ADMIN" && (
-                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    Администратор не может оформить бронирование. Войдите как клиент.
-                  </p>
-                )}
-
-                {session?.role === "USER" && (
+                  )
+                ) : (
                   <div className="min-w-0 space-y-4 overflow-x-hidden">
                     <div className="space-y-2">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

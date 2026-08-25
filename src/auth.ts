@@ -81,6 +81,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.role = (user as { role: "USER" | "ADMIN" }).role;
       }
+
+      if (token.id && !token.role) {
+        try {
+          const dbUser = await db((prisma) =>
+            prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { role: true },
+            })
+          );
+          if (dbUser) token.role = dbUser.role;
+        } catch (error) {
+          console.error("[auth] jwt role hydrate error:", error);
+        }
+      }
+
       return token;
     },
   },

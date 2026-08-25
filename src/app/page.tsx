@@ -5,6 +5,8 @@ import {
 } from "@/components/quest-catalog-card";
 import { getQuestCatalog } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const session = await auth();
 
