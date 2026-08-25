@@ -13,43 +13,52 @@ import { resolveYandexEmail } from "@/lib/yandex-email";
 const yandexConfigured =
   Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
 
-const DB_USER_ID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type AppRole = "USER" | "ADMIN";
 
-/** OAuth profile() отдаёт id Яндекса (число), не uuid из нашей БД — без этого role/id в JWT ломаются. */
-async function reconcileTokenWithDb(token: {
+function hasAppRole(role: unknown): role is AppRole {
+  return role === "USER" || role === "ADMIN";
+}
+
+/** Подтягивает/создаёт пользователя в БД и пишет id+role в token. */
+async function ensureTokenUser(token: {
   id?: unknown;
   role?: unknown;
   email?: unknown;
+  name?: unknown;
 }) {
-  const hasDbIdentity =
-    typeof token.id === "string" &&
-    DB_USER_ID_RE.test(token.id) &&
-    (token.role === "USER" || token.role === "ADMIN");
-
-  if (hasDbIdentity) return;
+  if (typeof token.id === "string" && token.id.length > 0 && hasAppRole(token.role)) {
+    return;
+  }
 
   const email =
     typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
   if (!email) return;
 
   try {
-    const dbUser = await db((prisma) =>
-      prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } },
-        select: { id: true, role: true },
-      })
-    );
-    if (!dbUser) return;
-    token.id = dbUser.id;
-    token.role = dbUser.role;
+    const result = await upsertUserFromOAuth({
+      email,
+      name:
+        (typeof token.name === "string" && token.name.trim()) ||
+        email.split("@")[0] ||
+        "Пользователь",
+    });
+    if (!result.ok) return;
+    token.id = result.user.id;
+    token.role = result.user.role;
+    token.email = result.user.email;
+    token.name = result.user.name;
   } catch (error) {
-    console.error("[auth] reconcileTokenWithDb error:", error);
+    console.error("[auth] ensureTokenUser error:", error);
   }
 }
 
 async function linkYandexAccount(
-  user: { id?: string; name?: string | null; email?: string | null; role?: "USER" | "ADMIN" },
+  user: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    role?: AppRole;
+  },
   profile?: YandexProfile | null
 ): Promise<boolean> {
   const email = resolveYandexEmail(user, profile);
@@ -97,7 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user?.id,
           name: user?.name ?? null,
           email: user?.email ?? null,
-          role: undefined as "USER" | "ADMIN" | undefined,
+          role: undefined as AppRole | undefined,
         };
         try {
           const linked = await linkYandexAccount(draft, yandexProfile);
@@ -116,46 +125,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       } else if (user) {
         token.id = user.id;
-        token.role = (user as { role: "USER" | "ADMIN" }).role;
+        if (hasAppRole((user as { role?: unknown }).role)) {
+          token.role = (user as { role: AppRole }).role;
+        }
         if (user.email) token.email = user.email;
+        if (user.name) token.name = user.name;
       }
 
-      await reconcileTokenWithDb(token);
-
+      await ensureTokenUser(token);
       return token;
     },
     async session({ session, token }) {
       if (!session.user) return session;
 
-      const email = (
-        session.user.email ??
-        (typeof token.email === "string" ? token.email : null)
-      )
-        ?.trim()
-        .toLowerCase();
+      // Старые JWT после Яндекса могли остаться без id/role — чиним на каждом запросе.
+      await ensureTokenUser(token);
 
-      if (email) {
-        try {
-          const dbUser = await db((prisma) =>
-            prisma.user.findFirst({
-              where: { email: { equals: email, mode: "insensitive" } },
-              select: { id: true, role: true, name: true, email: true },
-            })
-          );
-          if (dbUser) {
-            session.user.id = dbUser.id;
-            session.user.role = dbUser.role;
-            session.user.name = session.user.name ?? dbUser.name;
-            session.user.email = dbUser.email;
-            return session;
-          }
-        } catch (error) {
-          console.error("[auth] session db lookup error:", error);
-        }
+      if (typeof token.id === "string" && token.id.length > 0) {
+        session.user.id = token.id;
+      }
+      if (hasAppRole(token.role)) {
+        session.user.role = token.role;
+      }
+      if (typeof token.email === "string") {
+        session.user.email = token.email;
+      }
+      if (typeof token.name === "string") {
+        session.user.name = token.name;
       }
 
-      session.user.id = token.id as string;
-      session.user.role = token.role as "USER" | "ADMIN";
       return session;
     },
   },

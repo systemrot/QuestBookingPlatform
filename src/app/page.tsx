@@ -27,13 +27,15 @@ export default async function HomePage() {
     price: q.price.toString(),
   }));
 
-  const sessionInfo = session?.user
-    ? {
-        role: session.user.role,
-        name: session.user.name,
-        email: session.user.email,
-      }
-    : null;
+  // Без role карточка думает «сессия есть», но слоты не грузит (пустой блок).
+  const sessionInfo =
+    session?.user?.role === "USER" || session?.user?.role === "ADMIN"
+      ? {
+          role: session.user.role,
+          name: session.user.name,
+          email: session.user.email,
+        }
+      : null;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-4 py-12 sm:px-6">
