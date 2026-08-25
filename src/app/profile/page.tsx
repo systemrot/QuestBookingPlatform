@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function ProfilePage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");

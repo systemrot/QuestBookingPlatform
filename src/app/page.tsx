@@ -6,6 +6,7 @@ import {
 import { getQuestCatalog } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
   const session = await auth();

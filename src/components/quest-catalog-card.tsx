@@ -3,8 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 import { createBooking, getAvailableSlots, type SlotOption } from "@/app/actions/booking";
+import { getViewerSession, type ViewerSession } from "@/app/actions/session";
 import {
   listBookableDays,
   listScheduleStarts,
@@ -46,24 +49,24 @@ export type QuestForCatalog = {
   price: string;
 };
 
-type SessionInfo = {
-  role: "USER" | "ADMIN";
-  name?: string | null;
-  email?: string | null;
-} | null;
+type SessionInfo = ViewerSession | null;
 
 const QUEST_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80";
 
 export function QuestCatalogCard({
   quest,
-  session,
+  session: initialSession = null,
 }: {
   quest: QuestForCatalog;
-  session: SessionInfo;
+  session?: SessionInfo;
 }) {
+  const router = useRouter();
+  const { data: clientSession } = useSession();
   const bookableDays = React.useMemo(() => listBookableDays(), []);
   const [open, setOpen] = React.useState(false);
+  const [viewerSession, setViewerSession] = React.useState<SessionInfo>(null);
+  const [sessionLoading, setSessionLoading] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => listBookableDays()[0]);
   const [slots, setSlots] = React.useState<SlotOption[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -76,9 +79,34 @@ export function QuestCatalogCard({
     "Выберите удобный день и время — слоты обновляются в реальном времени.";
   const descriptionLong = description.length > 160;
 
+  const session = React.useMemo((): SessionInfo => {
+    if (viewerSession) return viewerSession;
+    if (clientSession?.user?.role) {
+      return {
+        role: clientSession.user.role,
+        name: clientSession.user.name,
+        email: clientSession.user.email,
+      };
+    }
+    return initialSession;
+  }, [viewerSession, clientSession, initialSession]);
+
   React.useEffect(() => {
     setImageSrc(quest.image ?? QUEST_IMAGE_FALLBACK);
   }, [quest.image]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setViewerSession(null);
+      return;
+    }
+
+    router.refresh();
+    setSessionLoading(true);
+    void getViewerSession()
+      .then(setViewerSession)
+      .finally(() => setSessionLoading(false));
+  }, [open, router]);
 
   const loadSlots = React.useCallback(async () => {
     if (!date || !session || session.role !== "USER") return;
@@ -264,7 +292,7 @@ export function QuestCatalogCard({
                   Бронирование
                 </p>
 
-                {!session?.role || session.role !== "USER" ? (
+                {!sessionLoading && (!session?.role || session.role !== "USER") ? (
                   session?.role === "ADMIN" ? (
                   <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
                     Администратор не может оформить бронирование. Войдите как клиент.
@@ -275,11 +303,14 @@ export function QuestCatalogCard({
                       Войдите, чтобы выбрать дату и оформить бронирование.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Link href="/login" className={cn(buttonVariants({ size: "sm" }))}>
+                      <Link
+                        href="/login?callbackUrl=%2F"
+                        className={cn(buttonVariants({ size: "sm" }))}
+                      >
                         Войти
                       </Link>
                       <Link
-                        href="/register"
+                        href="/register?callbackUrl=%2F"
                         className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
                       >
                         Создать аккаунт
@@ -287,6 +318,19 @@ export function QuestCatalogCard({
                     </div>
                   </div>
                   )
+                ) : sessionLoading ? (
+                  <div
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                    aria-busy="true"
+                    aria-label="Проверка сессии"
+                  >
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50"
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <div className="min-w-0 space-y-4 overflow-x-hidden">
                     <div className="space-y-2">

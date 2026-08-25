@@ -98,6 +98,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return token;
     },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        if (token.role) {
+          session.user.role = token.role as "USER" | "ADMIN";
+        } else if (token.id) {
+          try {
+            const dbUser = await db((prisma) =>
+              prisma.user.findUnique({
+                where: { id: token.id as string },
+                select: { role: true },
+              })
+            );
+            if (dbUser) session.user.role = dbUser.role;
+          } catch (error) {
+            console.error("[auth] session role hydrate error:", error);
+          }
+        }
+      }
+      return session;
+    },
   },
   providers: [
     ...(yandexConfigured

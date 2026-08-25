@@ -22,6 +22,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function BookingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");

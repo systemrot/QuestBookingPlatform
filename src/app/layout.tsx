@@ -3,12 +3,16 @@ import Image from "next/image";
 import { Geist_Mono, Montserrat } from "next/font/google";
 
 import { auth } from "@/auth";
+import { AuthSessionProvider } from "@/components/auth-session-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Footer } from "@/components/Footer";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const CINEMATIC_BG_IMAGE =
   "https://images.unsplash.com/photo-1741993348688-544565cfcfe3?auto=format&fit=crop&w=2400&q=85";
@@ -43,6 +47,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-transparent text-foreground">
+        <AuthSessionProvider session={session}>
         <div aria-hidden className="cinematic-bg">
           <Image
             src={CINEMATIC_BG_IMAGE}
@@ -69,6 +74,7 @@ export default async function RootLayout({
         </div>
         {session?.user?.role === "USER" ? <ChatWidget /> : null}
         <Toaster richColors />
+        </AuthSessionProvider>
       </body>
     </html>
   );
