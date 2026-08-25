@@ -124,11 +124,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return token;
     },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as "USER" | "ADMIN";
+    async session({ session, token }) {
+      if (!session.user) return session;
+
+      const email = (
+        session.user.email ??
+        (typeof token.email === "string" ? token.email : null)
+      )
+        ?.trim()
+        .toLowerCase();
+
+      if (email) {
+        try {
+          const dbUser = await db((prisma) =>
+            prisma.user.findFirst({
+              where: { email: { equals: email, mode: "insensitive" } },
+              select: { id: true, role: true, name: true, email: true },
+            })
+          );
+          if (dbUser) {
+            session.user.id = dbUser.id;
+            session.user.role = dbUser.role;
+            session.user.name = session.user.name ?? dbUser.name;
+            session.user.email = dbUser.email;
+            return session;
+          }
+        } catch (error) {
+          console.error("[auth] session db lookup error:", error);
+        }
       }
+
+      session.user.id = token.id as string;
+      session.user.role = token.role as "USER" | "ADMIN";
       return session;
     },
   },

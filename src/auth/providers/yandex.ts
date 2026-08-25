@@ -1,5 +1,7 @@
 import type { OAuthConfig } from "next-auth/providers";
 
+import { resolveYandexEmail } from "@/lib/yandex-email";
+
 export type YandexProfile = {
   id: string;
   login: string;
@@ -56,7 +58,7 @@ export function Yandex({
       },
     },
     profile(profile) {
-      const email = profile.default_email ?? profile.emails?.[0] ?? null;
+      const email = resolveYandexEmail({}, profile);
 
       const name =
         profile.real_name?.trim() ||
@@ -65,7 +67,8 @@ export function Yandex({
         profile.login;
 
       return {
-        id: String(profile.id),
+        // Не id Яндекса — иначе JWT.sub ломает lookup в нашей БД.
+        id: email ?? String(profile.id),
         name,
         email,
         image: yandexAvatarUrl(profile),
