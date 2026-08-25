@@ -13,6 +13,41 @@ import { resolveYandexEmail } from "@/lib/yandex-email";
 const yandexConfigured =
   Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
 
+const DB_USER_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** OAuth profile() отдаёт id Яндекса (число), не uuid из нашей БД — без этого role/id в JWT ломаются. */
+async function reconcileTokenWithDb(token: {
+  id?: unknown;
+  role?: unknown;
+  email?: unknown;
+}) {
+  const hasDbIdentity =
+    typeof token.id === "string" &&
+    DB_USER_ID_RE.test(token.id) &&
+    (token.role === "USER" || token.role === "ADMIN");
+
+  if (hasDbIdentity) return;
+
+  const email =
+    typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
+  if (!email) return;
+
+  try {
+    const dbUser = await db((prisma) =>
+      prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+        select: { id: true, role: true },
+      })
+    );
+    if (!dbUser) return;
+    token.id = dbUser.id;
+    token.role = dbUser.role;
+  } catch (error) {
+    console.error("[auth] reconcileTokenWithDb error:", error);
+  }
+}
+
 async function linkYandexAccount(
   user: { id?: string; name?: string | null; email?: string | null; role?: "USER" | "ADMIN" },
   profile?: YandexProfile | null
@@ -73,6 +108,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.name = draft.name ?? token.name;
           } else {
             console.error("[auth/yandex] jwt link failed");
+            const email = resolveYandexEmail(draft, yandexProfile);
+            if (email) token.email = email;
           }
         } catch (error) {
           console.error("[auth/yandex] jwt link error:", error);
@@ -80,42 +117,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       } else if (user) {
         token.id = user.id;
         token.role = (user as { role: "USER" | "ADMIN" }).role;
+        if (user.email) token.email = user.email;
       }
 
-      if (token.id && !token.role) {
-        try {
-          const dbUser = await db((prisma) =>
-            prisma.user.findUnique({
-              where: { id: token.id as string },
-              select: { role: true },
-            })
-          );
-          if (dbUser) token.role = dbUser.role;
-        } catch (error) {
-          console.error("[auth] jwt role hydrate error:", error);
-        }
-      }
+      await reconcileTokenWithDb(token);
 
       return token;
     },
-    async session({ session, token }) {
+    session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        if (token.role) {
-          session.user.role = token.role as "USER" | "ADMIN";
-        } else if (token.id) {
-          try {
-            const dbUser = await db((prisma) =>
-              prisma.user.findUnique({
-                where: { id: token.id as string },
-                select: { role: true },
-              })
-            );
-            if (dbUser) session.user.role = dbUser.role;
-          } catch (error) {
-            console.error("[auth] session role hydrate error:", error);
-          }
-        }
+        session.user.role = token.role as "USER" | "ADMIN";
       }
       return session;
     },

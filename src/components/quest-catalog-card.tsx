@@ -3,17 +3,10 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 import { createBooking, getAvailableSlots, type SlotOption } from "@/app/actions/booking";
-import { getViewerSession, type ViewerSession } from "@/app/actions/session";
 import {
   listBookableDays,
-  listScheduleStarts,
-  makeVirtualSlotId,
-  moscowDateTime,
-  slotEndTime,
   toMoscowDateKey,
 } from "@/lib/booking-policy";
 import { Badge } from "@/components/ui/badge";
@@ -49,24 +42,27 @@ export type QuestForCatalog = {
   price: string;
 };
 
-type SessionInfo = ViewerSession | null;
+type BookingAccess = "idle" | "loading" | "guest" | "user";
 
 const QUEST_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80";
 
-export function QuestCatalogCard({
-  quest,
-  session: initialSession = null,
-}: {
-  quest: QuestForCatalog;
-  session?: SessionInfo;
-}) {
-  const router = useRouter();
-  const { data: clientSession } = useSession();
+const SLOT_SKELETON = (
+  <div
+    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+    aria-busy="true"
+    aria-label="Загрузка слотов"
+  >
+    {[0, 1, 2, 3].map((i) => (
+      <div key={i} className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50" />
+    ))}
+  </div>
+);
+
+export function QuestCatalogCard({ quest }: { quest: QuestForCatalog }) {
   const bookableDays = React.useMemo(() => listBookableDays(), []);
   const [open, setOpen] = React.useState(false);
-  const [viewerSession, setViewerSession] = React.useState<SessionInfo>(null);
-  const [sessionLoading, setSessionLoading] = React.useState(false);
+  const [bookingAccess, setBookingAccess] = React.useState<BookingAccess>("idle");
   const [date, setDate] = React.useState<Date | undefined>(() => listBookableDays()[0]);
   const [slots, setSlots] = React.useState<SlotOption[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -79,75 +75,49 @@ export function QuestCatalogCard({
     "Выберите удобный день и время — слоты обновляются в реальном времени.";
   const descriptionLong = description.length > 160;
 
-  const session = React.useMemo((): SessionInfo => {
-    if (viewerSession) return viewerSession;
-    if (clientSession?.user?.role) {
-      return {
-        role: clientSession.user.role,
-        name: clientSession.user.name,
-        email: clientSession.user.email,
-      };
-    }
-    return initialSession;
-  }, [viewerSession, clientSession, initialSession]);
-
   React.useEffect(() => {
     setImageSrc(quest.image ?? QUEST_IMAGE_FALLBACK);
   }, [quest.image]);
 
-  React.useEffect(() => {
-    if (!open) {
-      setViewerSession(null);
-      return;
-    }
-
-    router.refresh();
-    setSessionLoading(true);
-    void getViewerSession()
-      .then(setViewerSession)
-      .finally(() => setSessionLoading(false));
-  }, [open, router]);
-
   const loadSlots = React.useCallback(async () => {
-    if (!date || !session || session.role !== "USER") return;
+    if (!date) return;
+
+    setBookingAccess("loading");
+    setLoading(true);
+    setSlots([]);
 
     const dateStr = toMoscowDateKey(date);
-    const [y, m, d] = dateStr.split("-").map(Number);
-    const dayFrom = moscowDateTime(y, m, d, 0, 0);
-    const dayTo = moscowDateTime(y, m, d, 23, 59);
-    const now = new Date();
-
-    // Мгновенно показываем сетку из политики (без БД), потом уточняем занятость.
-    const optimistic: SlotOption[] = listScheduleStarts(now)
-      .filter((s) => s.getTime() >= dayFrom.getTime() && s.getTime() <= dayTo.getTime())
-      .map((start) => ({
-        id: makeVirtualSlotId(quest.id, start),
-        startTime: start.toISOString(),
-        endTime: slotEndTime(start).toISOString(),
-        price: quest.price,
-      }));
-    setSlots(optimistic);
-    setLoading(optimistic.length === 0);
-
     const res = await getAvailableSlots(quest.id, dateStr);
     setLoading(false);
+
     if ("error" in res && res.error) {
-      toast.error(res.error);
+      if (res.error.includes("Войдите")) {
+        setBookingAccess("guest");
+      } else {
+        toast.error(res.error);
+        setBookingAccess("guest");
+      }
       return;
     }
+
+    setBookingAccess("user");
     if ("slots" in res) setSlots(res.slots);
-  }, [date, quest.id, quest.price, session]);
+  }, [date, quest.id]);
 
   React.useEffect(() => {
-    if (open && session?.role === "USER" && date) {
+    if (open && date) {
       void loadSlots();
+      return;
     }
-  }, [open, date, session, loadSlots]);
+    if (!open) {
+      setBookingAccess("idle");
+      setSlots([]);
+    }
+  }, [open, date, loadSlots]);
 
   async function handleBook(slotId: string) {
     if (pendingSlot) return;
 
-    // Старый клиентский флаг после снятия админом / истечения не должен мешать.
     clearClientPendingHold();
 
     setPendingSlot(slotId);
@@ -183,6 +153,10 @@ export function QuestCatalogCard({
       setPendingSlot(null);
     }
   }
+
+  const showGuestPrompt = bookingAccess === "guest";
+  const showBookingUi =
+    bookingAccess === "user" || (bookingAccess === "loading" && !showGuestPrompt);
 
   return (
     <>
@@ -256,7 +230,6 @@ export function QuestCatalogCard({
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 576px"
               />
-              {/* Длинный градиент в цвет модалки — без резкой «полосы» на стыке */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-15% via-popover/85 via-45% to-transparent to-75%" />
               <Badge className="absolute left-3 top-3 z-[1] bg-background/90 text-foreground backdrop-blur">
                 От {formatRub(quest.price)}
@@ -292,12 +265,7 @@ export function QuestCatalogCard({
                   Бронирование
                 </p>
 
-                {!sessionLoading && (!session?.role || session.role !== "USER") ? (
-                  session?.role === "ADMIN" ? (
-                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    Администратор не может оформить бронирование. Войдите как клиент.
-                  </p>
-                  ) : (
+                {showGuestPrompt ? (
                   <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
                     <p className="mb-3 text-muted-foreground">
                       Войдите, чтобы выбрать дату и оформить бронирование.
@@ -317,21 +285,7 @@ export function QuestCatalogCard({
                       </Link>
                     </div>
                   </div>
-                  )
-                ) : sessionLoading ? (
-                  <div
-                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-                    aria-busy="true"
-                    aria-label="Проверка сессии"
-                  >
-                    {[0, 1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50"
-                      />
-                    ))}
-                  </div>
-                ) : (
+                ) : showBookingUi ? (
                   <div className="min-w-0 space-y-4 overflow-x-hidden">
                     <div className="space-y-2">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -389,28 +343,15 @@ export function QuestCatalogCard({
                         </span>
                       </p>
 
-                      {loading && slots.length === 0 && (
-                        <div
-                          className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-                          aria-busy="true"
-                          aria-label="Загрузка слотов"
-                        >
-                          {[0, 1, 2, 3].map((i) => (
-                            <div
-                              key={i}
-                              className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50"
-                            />
-                          ))}
-                        </div>
-                      )}
+                      {loading && slots.length === 0 ? SLOT_SKELETON : null}
 
-                      {!loading && slots.length === 0 && date && (
+                      {!loading && bookingAccess === "user" && slots.length === 0 && date ? (
                         <p className="text-sm text-muted-foreground">
                           На эту дату нет свободных слотов.
                         </p>
-                      )}
+                      ) : null}
 
-                      {slots.length > 0 ? (
+                      {!loading && slots.length > 0 ? (
                         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                           {slots.map((s) => {
                             const busy = pendingSlot === s.id;
@@ -442,7 +383,7 @@ export function QuestCatalogCard({
                       ) : null}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <p className="text-xs text-muted-foreground">

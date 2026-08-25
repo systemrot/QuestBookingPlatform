@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import {
   QuestCatalogCard,
   type QuestForCatalog,
@@ -9,8 +8,6 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
-  const session = await auth();
-
   let catalogUnavailable = false;
   let quests: Awaited<ReturnType<typeof getQuestCatalog>> = [];
   try {
@@ -26,14 +23,6 @@ export default async function HomePage() {
     image: q.image,
     price: q.price.toString(),
   }));
-
-  const sessionInfo = session?.user
-    ? {
-        role: session.user.role,
-        name: session.user.name,
-        email: session.user.email,
-      }
-    : null;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-4 py-12 sm:px-6">
@@ -80,7 +69,7 @@ export default async function HomePage() {
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {catalog.map((quest) => (
               <li key={quest.id}>
-                <QuestCatalogCard quest={quest} session={sessionInfo} />
+                <QuestCatalogCard quest={quest} />
               </li>
             ))}
           </ul>
