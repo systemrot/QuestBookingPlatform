@@ -25,7 +25,7 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  password  String
+  password  String?
   phone     String?
   age       Int?
   role      Role     @default(USER)
@@ -60,18 +60,22 @@ model Slot {
   updatedAt DateTime @updatedAt
 
   quest       Quest        @relation(fields: [questId], references: [id], onDelete: Cascade)
-  booking     Booking?
+  bookings    Booking[]
   assignments Assignment[]
 
+  @@unique([questId, startTime])
   @@index([questId])
+  @@index([startTime])
 }
 
 model Booking {
   id        String        @id @default(cuid())
   userId    String
-  slotId    String        @unique
+  slotId    String
   status    BookingStatus @default(PENDING)
   paymentId String?
+  /// До какого момента PENDING удерживает слот. Для PAID/CANCELLED обычно null.
+  expiresAt DateTime? @db.Timestamptz(3)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
@@ -79,6 +83,8 @@ model Booking {
   slot Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([slotId])
+  @@index([status, expiresAt])
 }
 
 model Actor {

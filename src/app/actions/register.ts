@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { emailField, nameField, passwordField } from "@/lib/field-limits";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { parseOptionalRuPhone } from "@/lib/ru-phone";
 
 const schema = z.object({
@@ -58,25 +58,29 @@ export async function registerUser(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-  });
+  const existing = await db((prisma) =>
+    prisma.user.findUnique({
+      where: { email: parsed.data.email },
+    })
+  );
   if (existing) {
     return { error: "Аккаунт с таким email уже существует." };
   }
 
   const hashed = await bcrypt.hash(parsed.data.password, 10);
 
-  await prisma.user.create({
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      password: hashed,
-      phone: parsed.data.phone ?? null,
-      age: parsed.data.age ?? null,
-      role: "USER",
-    },
-  });
+  await db((prisma) =>
+    prisma.user.create({
+      data: {
+        name: parsed.data.name,
+        email: parsed.data.email,
+        password: hashed,
+        phone: parsed.data.phone ?? null,
+        age: parsed.data.age ?? null,
+        role: "USER",
+      },
+    })
+  );
 
   return { success: true };
 }

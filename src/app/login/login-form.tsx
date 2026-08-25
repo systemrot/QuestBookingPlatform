@@ -11,13 +11,18 @@ import {
   FIELD_LIMITS,
   safeCallbackUrl,
 } from "@/lib/field-limits";
+import { YandexSignInButton } from "@/components/auth/yandex-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const initial: LoginState = {};
 
-export function LoginForm() {
+type Props = {
+  yandexOAuthEnabled?: boolean;
+};
+
+export function LoginForm({ yandexOAuthEnabled = false }: Props) {
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl") ?? "/");
   const [email, setEmail] = useState("");
@@ -27,6 +32,18 @@ export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initial);
 
   return (
+    <div className="space-y-4">
+      {yandexOAuthEnabled ? <YandexSignInButton callbackUrl={callbackUrl} /> : null}
+      {yandexOAuthEnabled ? (
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border/80" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">или email</span>
+        </div>
+      </div>
+      ) : null}
     <form action={formAction} className="space-y-4 rounded-xl border border-border/80 bg-card/40 p-6 shadow-sm">
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
       <div className="space-y-2">
@@ -82,5 +99,6 @@ export function LoginForm() {
         {pending ? "Входим..." : "Войти"}
       </Button>
     </form>
+    </div>
   );
 }

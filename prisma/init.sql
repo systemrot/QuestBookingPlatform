@@ -56,6 +56,7 @@ CREATE TABLE "Booking" (
     "slotId" TEXT NOT NULL,
     "status" "BookingStatus" NOT NULL DEFAULT 'PENDING',
     "paymentId" TEXT,
+    "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -98,12 +99,13 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE INDEX "Slot_questId_idx" ON "Slot"("questId");
+CREATE INDEX "Slot_startTime_idx" ON "Slot"("startTime");
+CREATE UNIQUE INDEX "Slot_questId_startTime_key" ON "Slot"("questId", "startTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Booking_slotId_key" ON "Booking"("slotId");
-
--- CreateIndex
+CREATE INDEX "Booking_slotId_idx" ON "Booking"("slotId");
 CREATE INDEX "Booking_userId_idx" ON "Booking"("userId");
+CREATE INDEX "Booking_status_expiresAt_idx" ON "Booking"("status", "expiresAt");
 
 -- CreateIndex
 CREATE INDEX "Assignment_slotId_idx" ON "Assignment"("slotId");

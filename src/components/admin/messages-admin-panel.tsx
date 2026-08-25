@@ -11,6 +11,7 @@ import {
   type AdminThread,
   type ChatMessageDto,
 } from "@/app/actions/chat";
+import { ChatMessageBubble } from "@/components/chat/chat-message-bubble";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
   const forceScrollBottomRef = useRef(false);
   const requestIdRef = useRef(0);
   const pollingUserIdRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
 
   const scrollMessagesToBottom = () => {
     const viewport = messagesScrollRootRef.current?.querySelector<HTMLElement>(
@@ -69,21 +71,47 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
     return changed ? merged : prev;
   };
 
+  /** Keep optimistic bubbles; never flash-duplicate server rows. */
+  const mergeConversation = (prev: ChatMessageDto[], server: ChatMessageDto[]) => {
+    const byId = new Map(server.map((m) => [m.id, m]));
+    const pending = prev.filter((m) => m.id.startsWith("pending-"));
+    for (const p of pending) {
+      const already =
+        server.some(
+          (s) =>
+            s.fromAdmin === p.fromAdmin &&
+            s.text === p.text &&
+            Math.abs(+new Date(s.createdAt) - +new Date(p.createdAt)) < 60_000
+        ) || byId.has(p.id);
+      if (!already) byId.set(p.id, p);
+    }
+    return [...byId.values()].sort(
+      (a, b) => +new Date(a.createdAt) - +new Date(b.createdAt)
+    );
+  };
+
   const loadThreads = async () => {
     const t = await getAdminThreads();
     setThreads((prev) => mergeThreads(prev, t));
     if (!activeUserId && t.length > 0) setActiveUserId(t[0].userId);
   };
 
-  const loadConversation = async (userId: string, showLoader = false) => {
+  const loadConversation = async (
+    userId: string,
+    showLoader = false,
+    markRead = false
+  ) => {
+    if (sendingRef.current && !showLoader) return;
     const requestId = ++requestIdRef.current;
     if (showLoader) {
       setConversation([]);
       setConversationLoading(true);
     }
-    const rows = await getAdminConversation(userId);
+    const rows = await getAdminConversation(userId, { markRead });
     if (requestId !== requestIdRef.current) return;
-    setConversation(rows);
+    setConversation((prev) =>
+      showLoader ? rows : mergeConversation(prev, rows)
+    );
     setConversationLoading(false);
   };
 
@@ -101,7 +129,7 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
       setActiveUserId((prev) => prev ?? initialUserId ?? t[0]?.userId ?? null);
     };
     const timer = setTimeout(() => void tick(), 0);
-    const id = setInterval(() => void tick(), 3000);
+    const id = setInterval(() => void tick(), 20_000);
     return () => {
       clearTimeout(timer);
       clearInterval(id);
@@ -112,15 +140,15 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
     if (!activeUserId) return;
     pollingUserIdRef.current = activeUserId;
     const timer = setTimeout(() => {
-      void loadConversation(activeUserId, true);
+      void loadConversation(activeUserId, true, true);
     }, 0);
 
     const tick = async () => {
       const currentUserId = pollingUserIdRef.current;
-      if (!currentUserId) return;
-      await loadConversation(currentUserId, false);
+      if (!currentUserId || sendingRef.current) return;
+      await loadConversation(currentUserId, false, false);
     };
-    const id = setInterval(() => void tick(), 3000);
+    const id = setInterval(() => void tick(), 20_000);
     return () => {
       clearTimeout(timer);
       clearInterval(id);
@@ -198,33 +226,64 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
   );
 
   const onSend = async () => {
-    if (!activeUserId || !text.trim() || sending) return;
+    if (!activeUserId || !text.trim() || sendingRef.current) return;
+
+    const trimmed = text.trim();
+    const tempId = `pending-${Date.now()}`;
+    const optimistic: ChatMessageDto = {
+      id: tempId,
+      text: trimmed,
+      createdAt: new Date().toISOString(),
+      fromAdmin: true,
+    };
+
+    sendingRef.current = true;
     setSending(true);
-    const result = await sendMessage(activeUserId, text);
-    if ("error" in result && result.error) {
-      toast.error(result.error);
-      setSending(false);
-      return;
-    }
     setText("");
+    setConversation((prev) => [...prev, optimistic]);
     forceScrollBottomRef.current = true;
-    await loadConversation(activeUserId, false);
-    await loadThreads();
-    setSending(false);
+
+    try {
+      const result = await sendMessage(activeUserId, trimmed);
+      if ("error" in result && result.error) {
+        setConversation((prev) => prev.filter((m) => m.id !== tempId));
+        toast.error(result.error);
+        return;
+      }
+
+      if ("message" in result && result.message) {
+        const real = result.message;
+        setConversation((prev) => {
+          const withoutTemp = prev.filter((m) => m.id !== tempId);
+          if (withoutTemp.some((m) => m.id === real.id)) return withoutTemp;
+          return [...withoutTemp, real].sort(
+            (a, b) => +new Date(a.createdAt) - +new Date(b.createdAt)
+          );
+        });
+      }
+
+      void loadThreads();
+    } catch {
+      setConversation((prev) => prev.filter((m) => m.id !== tempId));
+      toast.error("Не удалось отправить сообщение.");
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[30%_70%]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(240px,32%)_minmax(0,1fr)]">
       <Card className="border-border/80 bg-card/50">
         <CardHeader>
           <CardTitle>Диалоги</CardTitle>
           <CardDescription>Пользователи и последние сообщения.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-[70vh] overflow-y-auto overscroll-contain px-4 pb-4 lg:hidden">
+          <div className="max-h-[min(40vh,320px)] overflow-y-auto overscroll-contain px-4 pb-4 lg:hidden">
             <div className="space-y-2 pt-1">{threadListContent}</div>
           </div>
-          <ScrollArea className="hidden h-[70vh] px-4 pb-4 lg:block">
+          <ScrollArea className="hidden h-[min(70vh,640px)] px-4 pb-4 lg:block">
             <div className="space-y-2 pt-1">{threadListContent}</div>
           </ScrollArea>
         </CardContent>
@@ -232,14 +291,14 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
 
       <Card className="border-border/80 bg-card/50">
         <CardHeader>
-          <CardTitle>Чат: {activeUserName}</CardTitle>
+          <CardTitle className="truncate">Чат: {activeUserName}</CardTitle>
           <CardDescription>
             {isPendingSwitch ? "Переключаем диалог..." : "Отвечайте пользователю в режиме реального времени."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 pt-0">
           <div ref={messagesScrollRootRef}>
-            <ScrollArea className="h-[62vh] rounded-md border border-border/70 p-2">
+            <ScrollArea className="h-[min(48vh,420px)] rounded-md border border-border/70 p-2 lg:h-[min(62vh,560px)]">
               {!activeUserId ? (
                 <p className="p-2 text-sm text-muted-foreground">Выберите чат для начала общения</p>
               ) : conversationLoading ? (
@@ -252,19 +311,16 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
               ) : conversation.length === 0 ? (
                 <p className="p-2 text-sm text-muted-foreground">Пока нет сообщений в этом чате.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3 py-1">
                   {conversation.map((m) => (
-                    <div
+                    <ChatMessageBubble
                       key={m.id}
-                      className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${
-                        m.fromAdmin
-                          ? "ml-auto bg-primary text-primary-foreground"
-                          : "mr-auto bg-secondary text-secondary-foreground"
-                      }`}
-                    >
-                      <div>{m.text}</div>
-                      <div className="mt-1 text-[11px] opacity-80">{formatRu(new Date(m.createdAt), "d MMM, HH:mm")}</div>
-                    </div>
+                      text={m.text}
+                      createdAt={m.createdAt}
+                      variant={m.fromAdmin ? "outgoing" : "incoming"}
+                      label={m.fromAdmin ? undefined : activeUserName}
+                      pending={m.id.startsWith("pending-")}
+                    />
                   ))}
                 </div>
               )}
@@ -289,7 +345,11 @@ export function MessagesAdminPanel({ initialUserId = null }: Props) {
                 }
               }}
             />
-            <Button onClick={onSend} disabled={!activeUserId || !text.trim() || sending}>
+            <Button
+              className="shrink-0"
+              onClick={onSend}
+              disabled={!activeUserId || !text.trim() || sending}
+            >
               {sending ? "..." : "Отправить"}
             </Button>
           </div>

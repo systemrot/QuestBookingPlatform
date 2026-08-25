@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { nameField } from "@/lib/field-limits";
-import { prisma } from "@/lib/prisma";
+import { invalidateUserProfileData } from "@/lib/cache";
+import { db } from "@/lib/prisma";
 import { parseOptionalRuPhone } from "@/lib/ru-phone";
 
 const profileSchema = z.object({
@@ -60,16 +61,19 @@ export async function updateProfileAction(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: {
-      name: parsed.data.name,
-      phone: parsed.data.phone ?? null,
-      age: parsed.data.age ?? null,
-    },
-  });
+  await db((prisma) =>
+    prisma.user.update({
+      where: { id: session.user!.id },
+      data: {
+        name: parsed.data.name,
+        phone: parsed.data.phone ?? null,
+        age: parsed.data.age ?? null,
+      },
+    })
+  );
 
   revalidatePath("/profile");
+  invalidateUserProfileData(session.user.id);
   return { success: true };
 }
 

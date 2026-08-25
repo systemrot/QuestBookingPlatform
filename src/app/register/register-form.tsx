@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
 import { registerUser, type RegisterState } from "@/app/actions/register";
+import { YandexSignInButton } from "@/components/auth/yandex-sign-in-button";
 import {
   clampEmailInput,
   clampNameInput,
@@ -19,7 +20,11 @@ import { Label } from "@/components/ui/label";
 
 const initial: RegisterState = {};
 
-export function RegisterForm() {
+type Props = {
+  yandexOAuthEnabled?: boolean;
+};
+
+export function RegisterForm({ yandexOAuthEnabled = false }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,6 +43,18 @@ export function RegisterForm() {
   }
 
   return (
+    <div className="space-y-4">
+      {yandexOAuthEnabled ? <YandexSignInButton callbackUrl="/" /> : null}
+      {yandexOAuthEnabled ? (
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border/80" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">или email</span>
+        </div>
+      </div>
+      ) : null}
     <form action={formAction} className="space-y-4 rounded-xl border border-border/80 bg-card/40 p-6 shadow-sm">
       <div className="space-y-2">
         <Label htmlFor="name">Имя</Label>
@@ -123,5 +140,6 @@ export function RegisterForm() {
         {pending ? "Создаем..." : "Создать аккаунт"}
       </Button>
     </form>
+    </div>
   );
 }

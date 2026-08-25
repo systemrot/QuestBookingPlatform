@@ -3,36 +3,17 @@ import {
   QuestCatalogCard,
   type QuestForCatalog,
 } from "@/components/quest-catalog-card";
-import { prisma } from "@/lib/prisma";
-import { unstable_cache } from "next/cache";
-
-const getCachedQuests = unstable_cache(
-  async () =>
-    prisma.quest.findMany({
-      orderBy: { title: "asc" },
-    }),
-  ["quest-catalog"],
-  { revalidate: 300 },
-);
+import { getQuestCatalog } from "@/lib/data";
 
 export default async function HomePage() {
   const session = await auth();
 
-  let quests: {
-    id: string;
-    title: string;
-    description: string | null;
-    image: string | null;
-    price: { toString(): string };
-  }[] = [];
-  let dbError: string | null = null;
+  let catalogUnavailable = false;
+  let quests: Awaited<ReturnType<typeof getQuestCatalog>> = [];
   try {
-    quests = await getCachedQuests();
-  } catch (e) {
-    dbError =
-      e instanceof Error
-        ? e.message
-        : "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и выполните миграции.";
+    quests = await getQuestCatalog();
+  } catch {
+    catalogUnavailable = true;
   }
 
   const catalog: QuestForCatalog[] = quests.map((q) => ({
@@ -61,49 +42,36 @@ export default async function HomePage() {
           Яркие сценарии и живые эмоции — в одном шаге от вас.
         </h1>
         <p className="max-w-xl text-muted-foreground">
-          Выберите квест, удобную дату и время для вашей команды. Интерфейс
-          сразу в темной теме — комфортно даже при долгом выборе.
+          Выберите квест, удобную дату и время для вашей команды. Слот держится
+          20 минут — успеете спокойно оплатить.
         </p>
       </section>
 
       <section className="space-y-6">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="font-heading text-xl font-medium">Каталог квестов</h2>
-          <span className="text-xs text-muted-foreground">
-            {catalog.length} квестов
-          </span>
+          {!catalogUnavailable ? (
+            <span className="text-xs text-muted-foreground">
+              {catalog.length}{" "}
+              {catalog.length === 1
+                ? "квест"
+                : catalog.length >= 2 && catalog.length <= 4
+                  ? "квеста"
+                  : "квестов"}
+            </span>
+          ) : null}
         </div>
-        {dbError && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-            <p className="font-medium">База данных недоступна</p>
-            <p className="mt-1 text-amber-100/80">
-              Обновите{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-                DATABASE_URL
-              </code>{" "}
-              в{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-                .env
-              </code>
-              , затем выполните{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
-                npx prisma migrate dev
-              </code>
-              .
+        {catalogUnavailable ? (
+          <div className="rounded-xl border border-border/80 bg-muted/20 p-10 text-center text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Каталог временно недоступен</p>
+            <p className="mt-2">
+              Мы уже работаем над этим. Попробуйте обновить страницу чуть позже.
             </p>
           </div>
-        )}
-        {catalog.length === 0 ? (
+        ) : catalog.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-            Пока нет квестов. Выполните{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
-              npx prisma migrate dev
-            </code>{" "}
-            и{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
-              npm run db:seed
-            </code>{" "}
-            для загрузки тестовых данных.
+            <p className="font-medium text-foreground">Пока нет доступных квестов</p>
+            <p className="mt-2">Загляните позже — новые сценарии скоро появятся в каталоге.</p>
           </div>
         ) : (
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

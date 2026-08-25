@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { completeMockPayment } from "@/app/actions/booking";
 import { startBookingPayment } from "@/app/actions/payment";
 import { Button } from "@/components/ui/button";
+import { clearClientPendingHold } from "@/lib/pending-hold-client";
 
 type Props = {
   bookingId: string;
@@ -21,36 +22,38 @@ export function PayBookingButton({ bookingId, disabled }: Props) {
     if (disabled || loading) return;
     setLoading(true);
 
-    const pending = await startBookingPayment(bookingId);
-    if ("error" in pending && pending.error) {
-      toast.error(pending.error);
+    try {
+      const result = await startBookingPayment(bookingId);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if ("redirectUrl" in result) {
+        window.location.assign(result.redirectUrl);
+        return;
+      }
+
+      clearClientPendingHold();
+      toast.success("Оплата прошла успешно!");
+      router.refresh();
+    } catch {
+      toast.error("Нет связи с сервером. Попробуйте ещё раз через пару секунд.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if ("redirectUrl" in pending) {
-      window.location.assign(pending.redirectUrl);
-      return;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const done = await completeMockPayment(bookingId);
-    if ("error" in done && done.error) {
-      toast.error("Ошибка оплаты");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Оплата прошла успешно!");
-    setLoading(false);
-    router.refresh();
   };
 
   return (
     <Button size="sm" onClick={onPay} disabled={disabled || loading}>
-      {loading ? "Подождите..." : "Оплатить"}
+      {loading ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Loader2 className="size-3.5 animate-spin" />
+          Оплачиваем…
+        </span>
+      ) : (
+        "Оплатить"
+      )}
     </Button>
   );
 }
-

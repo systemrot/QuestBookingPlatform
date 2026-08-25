@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { RegisterForm } from "./register-form";
 
+const yandexOAuthEnabled =
+  Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
+
 export default function RegisterPage() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
@@ -11,7 +14,7 @@ export default function RegisterPage() {
           Создайте аккаунт, чтобы просматривать доступные слоты и бронировать квесты.
         </p>
       </div>
-      <RegisterForm />
+      <RegisterForm yandexOAuthEnabled={yandexOAuthEnabled} />
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Уже зарегистрированы?{" "}
         <Link href="/login" className="text-primary underline-offset-4 hover:underline">

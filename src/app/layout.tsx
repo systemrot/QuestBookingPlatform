@@ -51,7 +51,9 @@ export default async function RootLayout({
             priority
             fetchPriority="high"
             sizes="100vw"
-            quality={85}
+            quality={75}
+            // Unsplash через /_next/image часто таймаутится 10–20с и тормозит первый paint.
+            unoptimized
             className="cinematic-bg-image"
           />
           <div className="cinematic-bg-vignette" />

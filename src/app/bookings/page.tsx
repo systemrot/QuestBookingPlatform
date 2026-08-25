@@ -2,10 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
-import { Badge } from "@/components/ui/badge";
+import { BookingStatusBadge } from "@/components/booking-status";
+import { PayBookingButton } from "@/components/profile/pay-booking-button";
+import { SyncPendingHold } from "@/components/sync-pending-hold";
+import { resolveBookingStatus } from "@/lib/booking-policy";
+import { getUserBookings } from "@/lib/data";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatRub, formatRu } from "@/lib/locale";
+import {
+  clearPendingHoldMemory,
+  rememberPendingHoldMemory,
+} from "@/lib/pending-hold";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -15,38 +22,39 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  PENDING: "secondary",
-  PAID: "default",
-  CANCELLED: "outline",
-};
-const statusLabel: Record<string, string> = {
-  PENDING: "Ожидает оплаты",
-  PAID: "Оплачено",
-  CANCELLED: "Отменено",
-};
-
 export default async function BookingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const bookings = await prisma.booking.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      slot: {
-        include: { quest: true },
-      },
-    },
-  });
+  const userId = session.user.id;
+  const now = new Date();
+  const bookings = (await getUserBookings(userId)).map((b) => ({
+    ...b,
+    status: resolveBookingStatus(b.status, b.expiresAt, now),
+  }));
+
+  // Cookie нельзя писать из Server Component — только память процесса + SyncPendingHold на клиенте.
+  const pending = bookings.find((b) => b.status === "PENDING" && b.expiresAt);
+  if (pending?.expiresAt) {
+    rememberPendingHoldMemory(userId, pending.expiresAt);
+  } else {
+    clearPendingHoldMemory(userId);
+  }
+
+  const pendingExpiresIso = pending?.expiresAt
+    ? pending.expiresAt.toISOString()
+    : null;
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12 sm:px-6">
+      <SyncPendingHold expiresAtIso={pendingExpiresIso} />
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold">Мои бронирования</h1>
           <p className="text-sm text-muted-foreground">
-            Слоты со статусом &quot;Ожидает оплаты&quot; остаются зарезервированными до подтверждения оплаты.
+            Неоплаченная бронь держит слот 20 минут. Одновременно активен один
+            холд — новая бронь заменяет предыдущую. После оплаты депозита время
+            закреплено за вами.
           </p>
         </div>
         <Link
@@ -85,15 +93,27 @@ export default async function BookingsPage() {
                       {formatRu(b.slot.endTime, "HH:mm")}
                     </CardDescription>
                   </div>
-                  <Badge variant={statusVariant[b.status] ?? "secondary"}>
-                    {statusLabel[b.status] ?? b.status}
-                  </Badge>
+                  <BookingStatusBadge status={b.status} />
                 </CardHeader>
-                <CardContent className="text-xs text-muted-foreground">
-                  Стоимость слота{" "}
-                  <span className="font-medium text-foreground">
-                    {formatRub(Number(b.slot.price))}
-                  </span>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Стоимость слота{" "}
+                    <span className="font-medium text-foreground">
+                      {formatRub(Number(b.slot.price))}
+                    </span>
+                    {b.status === "PENDING" && b.expiresAt ? (
+                      <>
+                        {" "}
+                        · оплатите до{" "}
+                        <span className="font-medium text-foreground">
+                          {formatRu(b.expiresAt, "HH:mm")}
+                        </span>
+                      </>
+                    ) : null}
+                  </p>
+                  {b.status === "PENDING" ? (
+                    <PayBookingButton bookingId={b.id} />
+                  ) : null}
                 </CardContent>
               </Card>
             </li>

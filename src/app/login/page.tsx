@@ -3,6 +3,9 @@ import { Suspense } from "react";
 
 import { LoginForm } from "./login-form";
 
+const yandexOAuthEnabled =
+  Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
+
 export default function LoginPage() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
@@ -13,7 +16,7 @@ export default function LoginPage() {
         </p>
       </div>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted/40" />}>
-        <LoginForm />
+        <LoginForm yandexOAuthEnabled={yandexOAuthEnabled} />
       </Suspense>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Нет аккаунта?{" "}

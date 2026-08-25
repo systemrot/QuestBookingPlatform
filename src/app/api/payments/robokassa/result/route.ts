@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { markBookingPaid } from "@/lib/payments/complete-booking";
 import { robokassaSignatureResult } from "@/lib/payments/robokassa";
 
@@ -49,10 +49,12 @@ async function processRobokassaCallback(params: URLSearchParams) {
   }
 
   const paymentRef = `robokassa:${invId}`;
-  const booking = await prisma.booking.findFirst({
-    where: { paymentId: paymentRef },
-    select: { id: true },
-  });
+  const booking = await db((prisma) =>
+    prisma.booking.findFirst({
+      where: { paymentId: paymentRef },
+      select: { id: true },
+    })
+  );
   if (!booking) {
     return new NextResponse("not found", { status: 404 });
   }

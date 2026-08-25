@@ -35,8 +35,8 @@ export function AdminMessagesLink({ iconOnly = false }: Props) {
       className={cn(
         buttonVariants({
           variant: "ghost",
-          size: iconOnly ? "icon" : "default",
-          className: iconOnly ? "relative" : "justify-between",
+          size: iconOnly ? "icon" : "sm",
+          className: iconOnly ? "relative" : "justify-between gap-2",
         }),
       )}
       aria-label="Сообщения"
