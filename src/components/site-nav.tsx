@@ -70,7 +70,7 @@ function NavLinkLabel({
 
 export function SiteNav({ session }: { session: { user: SessionUser } | null }) {
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar sm:gap-2">
+    <nav className="flex shrink-0 items-center gap-0.5 sm:gap-2">
       {session?.user ? (
         <>
           {session.user.role === "USER" && (
@@ -104,7 +104,7 @@ export function SiteNav({ session }: { session: { user: SessionUser } | null }) 
             prefetch
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
-              "shrink-0 px-2.5 text-xs sm:px-3 sm:text-sm"
+              "shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
             )}
           >
             <NavLinkLabel>Регистрация</NavLinkLabel>
