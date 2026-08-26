@@ -1,13 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  useTransition,
-} from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ChevronDown, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,23 +26,8 @@ type Props = {
   className?: string;
 };
 
-function subscribeDesktop(onChange: () => void) {
-  const mq = window.matchMedia("(min-width: 640px)");
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-}
-
-function useIsDesktop() {
-  return useSyncExternalStore(
-    subscribeDesktop,
-    () => window.matchMedia("(min-width: 640px)").matches,
-    () => true
-  );
-}
-
 export function CityPicker({ cities, currentSlug, className }: Props) {
   const router = useRouter();
-  const isDesktop = useIsDesktop();
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useState(currentSlug);
   const [open, setOpen] = useState(false);
@@ -95,36 +74,43 @@ export function CityPicker({ cities, currentSlug, className }: Props) {
             "hover:border-border hover:bg-card/70 dark:bg-card/40 dark:hover:bg-card/70",
             "focus-visible:ring-ring/30",
             "*:data-[slot=select-value]:truncate",
-            isDesktop
-              ? "w-[9.75rem] justify-between px-2.5 *:data-[slot=select-value]:flex-1"
-              : "w-auto justify-start px-2 [&>svg:last-child]:hidden *:data-[slot=select-value]:max-w-[6.5rem] *:data-[slot=select-value]:flex-none",
+            // Мобилка: ширина по тексту, прячем встроенный шеврон.
+            "w-auto justify-start px-2 max-sm:[&>svg:last-child]:hidden",
+            "*:data-[slot=select-value]:max-w-[6.5rem] *:data-[slot=select-value]:flex-none",
+            // ПК: фиксированная ширина, пин слева + встроенная стрелка.
+            "sm:w-[9.75rem] sm:justify-between sm:px-2.5",
+            "sm:*:data-[slot=select-value]:max-w-none sm:*:data-[slot=select-value]:flex-1",
             pending && "opacity-70"
           )}
         >
-          {isDesktop ? (
-            <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
-          ) : null}
-          <SelectValue placeholder="Город" className="flex-none" />
-          {!isDesktop ? (
-            open ? (
-              <ChevronDown
-                className="size-3.5 shrink-0 text-muted-foreground"
-                aria-hidden
-              />
-            ) : (
-              <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
-            )
-          ) : null}
+          {/* ПК: пин слева */}
+          <MapPin
+            className="hidden size-3.5 shrink-0 text-primary sm:block"
+            aria-hidden
+          />
+          <SelectValue placeholder="Город" className="flex-none sm:flex-1" />
+          {/* Мобилка: пин закрыт / шеврон открыт (вместо встроенной стрелки) */}
+          {open ? (
+            <ChevronDown
+              className="size-3.5 shrink-0 text-muted-foreground sm:hidden"
+              aria-hidden
+            />
+          ) : (
+            <MapPin
+              className="size-3.5 shrink-0 text-primary sm:hidden"
+              aria-hidden
+            />
+          )}
         </SelectTrigger>
         <SelectContent
           align="start"
           sideOffset={6}
-          alignItemWithTrigger={isDesktop}
+          alignItemWithTrigger={false}
           className={cn(
             "rounded-xl border border-border/60 bg-popover/95 p-1 shadow-lg ring-1 ring-foreground/5 backdrop-blur-md",
-            isDesktop
-              ? "w-(--anchor-width) min-w-(--anchor-width)"
-              : "w-fit min-w-[var(--anchor-width)]"
+            // Мобилка: по контенту; ПК: как у кнопки.
+            "w-fit min-w-[var(--anchor-width)]",
+            "sm:w-(--anchor-width) sm:min-w-(--anchor-width) sm:max-w-(--anchor-width)"
           )}
         >
           {cities.map((c) => (
