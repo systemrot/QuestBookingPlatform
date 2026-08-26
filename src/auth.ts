@@ -19,39 +19,6 @@ function hasAppRole(role: unknown): role is AppRole {
   return role === "USER" || role === "ADMIN";
 }
 
-/** Подтягивает/создаёт пользователя в БД и пишет id+role в token. */
-async function ensureTokenUser(token: {
-  id?: unknown;
-  role?: unknown;
-  email?: unknown;
-  name?: unknown;
-}) {
-  if (typeof token.id === "string" && token.id.length > 0 && hasAppRole(token.role)) {
-    return;
-  }
-
-  const email =
-    typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
-  if (!email) return;
-
-  try {
-    const result = await upsertUserFromOAuth({
-      email,
-      name:
-        (typeof token.name === "string" && token.name.trim()) ||
-        email.split("@")[0] ||
-        "Пользователь",
-    });
-    if (!result.ok) return;
-    token.id = result.user.id;
-    token.role = result.user.role;
-    token.email = result.user.email;
-    token.name = result.user.name;
-  } catch (error) {
-    console.error("[auth] ensureTokenUser error:", error);
-  }
-}
-
 async function linkYandexAccount(
   user: {
     id?: string;
@@ -90,6 +57,41 @@ async function linkYandexAccount(
   return true;
 }
 
+/**
+ * Если в JWT нет id/role (старая cookie / сбой линка), один раз дотягиваем из БД по email.
+ * Не дублируем это в session — Auth.js и так вызывает jwt на каждый /api/auth/session.
+ */
+async function hydrateTokenFromDb(token: {
+  id?: unknown;
+  role?: unknown;
+  email?: unknown;
+  name?: unknown;
+}) {
+  if (typeof token.id === "string" && token.id.length > 0 && hasAppRole(token.role)) {
+    return;
+  }
+
+  const email =
+    typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
+  if (!email) return;
+
+  try {
+    const existing = await db((prisma) =>
+      prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+        select: { id: true, role: true, name: true, email: true },
+      })
+    );
+    if (!existing) return;
+    token.id = existing.id;
+    token.role = existing.role;
+    token.email = existing.email;
+    token.name = existing.name;
+  } catch (error) {
+    console.error("[auth] hydrateTokenFromDb error:", error);
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -117,8 +119,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.name = draft.name ?? token.name;
           } else {
             console.error("[auth/yandex] jwt link failed");
-            const email = resolveYandexEmail(draft, yandexProfile);
-            if (email) token.email = email;
           }
         } catch (error) {
           console.error("[auth/yandex] jwt link error:", error);
@@ -132,28 +132,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user.name) token.name = user.name;
       }
 
-      await ensureTokenUser(token);
+      await hydrateTokenFromDb(token);
       return token;
     },
-    async session({ session, token }) {
-      if (!session.user) return session;
-
-      // Старые JWT после Яндекса могли остаться без id/role — чиним на каждом запросе.
-      await ensureTokenUser(token);
-
-      if (typeof token.id === "string" && token.id.length > 0) {
-        session.user.id = token.id;
+    session({ session, token }) {
+      if (session.user) {
+        if (typeof token.id === "string") session.user.id = token.id;
+        if (hasAppRole(token.role)) session.user.role = token.role;
       }
-      if (hasAppRole(token.role)) {
-        session.user.role = token.role;
-      }
-      if (typeof token.email === "string") {
-        session.user.email = token.email;
-      }
-      if (typeof token.name === "string") {
-        session.user.name = token.name;
-      }
-
       return session;
     },
   },

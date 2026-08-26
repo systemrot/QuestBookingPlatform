@@ -67,8 +67,7 @@ export function Yandex({
         profile.login;
 
       return {
-        // Не id Яндекса — иначе JWT.sub ломает lookup в нашей БД.
-        id: email ?? String(profile.id),
+        id: String(profile.id),
         name,
         email,
         image: yandexAvatarUrl(profile),
