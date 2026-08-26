@@ -3,8 +3,13 @@ import { Suspense } from "react";
 
 import { LoginForm } from "./login-form";
 
-const yandexOAuthEnabled =
-  Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
+const oauth = {
+  yandex:
+    Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET),
+  google:
+    Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET),
+  vk: Boolean(process.env.AUTH_VK_ID) && Boolean(process.env.AUTH_VK_SECRET),
+};
 
 export default function LoginPage() {
   return (
@@ -16,7 +21,7 @@ export default function LoginPage() {
         </p>
       </div>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted/40" />}>
-        <LoginForm yandexOAuthEnabled={yandexOAuthEnabled} />
+        <LoginForm oauth={oauth} />
       </Suspense>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Нет аккаунта?{" "}

@@ -2,8 +2,13 @@ import Link from "next/link";
 
 import { RegisterForm } from "./register-form";
 
-const yandexOAuthEnabled =
-  Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
+const oauth = {
+  yandex:
+    Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET),
+  google:
+    Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET),
+  vk: Boolean(process.env.AUTH_VK_ID) && Boolean(process.env.AUTH_VK_SECRET),
+};
 
 export default function RegisterPage() {
   return (
@@ -14,7 +19,7 @@ export default function RegisterPage() {
           Создайте аккаунт, чтобы просматривать доступные слоты и бронировать квесты.
         </p>
       </div>
-      <RegisterForm yandexOAuthEnabled={yandexOAuthEnabled} />
+      <RegisterForm oauth={oauth} />
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Уже зарегистрированы?{" "}
         <Link href="/login" className="text-primary underline-offset-4 hover:underline">

@@ -1,10 +1,12 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { authConfig } from "@/auth.config";
 import { Yandex, type YandexProfile } from "@/auth/providers/yandex";
+import { Vk, resolveVkEmail, type VkProfile } from "@/auth/providers/vk";
 import { emailField, loginPasswordField } from "@/lib/field-limits";
 import { upsertUserFromOAuth } from "@/lib/oauth-user";
 import { db } from "@/lib/prisma";
@@ -12,6 +14,12 @@ import { resolveYandexEmail } from "@/lib/yandex-email";
 
 const yandexConfigured =
   Boolean(process.env.AUTH_YANDEX_ID) && Boolean(process.env.AUTH_YANDEX_SECRET);
+const googleConfigured =
+  Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET);
+const vkConfigured =
+  Boolean(process.env.AUTH_VK_ID) && Boolean(process.env.AUTH_VK_SECRET);
+
+const OAUTH_PROVIDERS = new Set(["yandex", "google", "vk"]);
 
 type AppRole = "USER" | "ADMIN";
 
@@ -19,34 +27,79 @@ function hasAppRole(role: unknown): role is AppRole {
   return role === "USER" || role === "ADMIN";
 }
 
-async function linkYandexAccount(
+function resolveOAuthEmail(
+  provider: string,
+  user: { email?: string | null },
+  profile?: unknown
+): string | null {
+  if (provider === "yandex") {
+    return resolveYandexEmail(user, profile as YandexProfile | null);
+  }
+  if (provider === "vk") {
+    return resolveVkEmail(user, profile as VkProfile | null);
+  }
+  return user.email?.trim().toLowerCase() || null;
+}
+
+function resolveOAuthName(
+  provider: string,
+  user: { name?: string | null; email?: string | null },
+  profile?: unknown
+): string {
+  if (user.name?.trim()) return user.name.trim();
+
+  if (provider === "yandex") {
+    const p = profile as YandexProfile | undefined;
+    return (
+      p?.real_name?.trim() ||
+      p?.display_name?.trim() ||
+      p?.login ||
+      user.email?.split("@")[0] ||
+      "Пользователь"
+    );
+  }
+
+  if (provider === "vk") {
+    const p = profile as VkProfile | undefined;
+    const fromVk = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+    if (fromVk) return fromVk;
+  }
+
+  return user.email?.split("@")[0] || "Пользователь";
+}
+
+function resolveOAuthPhone(provider: string, profile?: unknown): string | null {
+  if (provider === "yandex") {
+    const p = profile as YandexProfile | undefined;
+    return p?.default_phone?.number ?? null;
+  }
+  return null;
+}
+
+async function linkOAuthAccount(
+  provider: string,
   user: {
     id?: string;
     name?: string | null;
     email?: string | null;
     role?: AppRole;
   },
-  profile?: YandexProfile | null
+  profile?: unknown
 ): Promise<boolean> {
-  const email = resolveYandexEmail(user, profile);
+  const email = resolveOAuthEmail(provider, user, profile);
   if (!email) {
-    console.error("[auth/yandex] no email in OAuth profile");
+    console.error(`[auth/${provider}] no email in OAuth profile`);
     return false;
   }
 
   const result = await upsertUserFromOAuth({
     email,
-    name:
-      user.name?.trim() ||
-      profile?.real_name?.trim() ||
-      profile?.display_name?.trim() ||
-      profile?.login ||
-      email,
-    phoneRaw: profile?.default_phone?.number ?? null,
+    name: resolveOAuthName(provider, user, profile),
+    phoneRaw: resolveOAuthPhone(provider, profile),
   });
 
   if (!result.ok) {
-    console.error("[auth/yandex] upsert denied:", result.reason);
+    console.error(`[auth/${provider}] upsert denied:`, result.reason);
     return false;
   }
 
@@ -57,10 +110,6 @@ async function linkYandexAccount(
   return true;
 }
 
-/**
- * Если в JWT нет id/role (старая cookie / сбой линка), один раз дотягиваем из БД по email.
- * Не дублируем это в session — Auth.js и так вызывает jwt на каждый /api/auth/session.
- */
 async function hydrateTokenFromDb(token: {
   id?: unknown;
   role?: unknown;
@@ -98,12 +147,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user, account }) {
       if (account?.provider === "credentials") return Boolean(user?.id);
-      if (account?.provider === "yandex") return true;
+      if (account?.provider && OAUTH_PROVIDERS.has(account.provider)) return true;
       return false;
     },
     async jwt({ token, user, account, profile }) {
-      if (account?.provider === "yandex") {
-        const yandexProfile = profile as YandexProfile | undefined;
+      if (account?.provider && OAUTH_PROVIDERS.has(account.provider)) {
         const draft = {
           id: user?.id,
           name: user?.name ?? null,
@@ -111,17 +159,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: undefined as AppRole | undefined,
         };
         try {
-          const linked = await linkYandexAccount(draft, yandexProfile);
+          const linked = await linkOAuthAccount(account.provider, draft, profile);
           if (linked) {
             token.id = draft.id!;
             token.role = draft.role!;
             token.email = draft.email ?? token.email;
             token.name = draft.name ?? token.name;
           } else {
-            console.error("[auth/yandex] jwt link failed");
+            console.error(`[auth/${account.provider}] jwt link failed`);
           }
         } catch (error) {
-          console.error("[auth/yandex] jwt link error:", error);
+          console.error(`[auth/${account.provider}] jwt link error:`, error);
         }
       } else if (user) {
         token.id = user.id;
@@ -149,6 +197,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           Yandex({
             clientId: process.env.AUTH_YANDEX_ID!,
             clientSecret: process.env.AUTH_YANDEX_SECRET!,
+          }),
+        ]
+      : []),
+    ...(googleConfigured
+      ? [
+          Google({
+            clientId: process.env.AUTH_GOOGLE_ID!,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+          }),
+        ]
+      : []),
+    ...(vkConfigured
+      ? [
+          Vk({
+            clientId: process.env.AUTH_VK_ID!,
+            clientSecret: process.env.AUTH_VK_SECRET!,
           }),
         ]
       : []),

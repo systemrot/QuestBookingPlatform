@@ -12,6 +12,11 @@ const footerNav = [
   { href: "/bookings", label: "Мои бронирования" },
 ] as const;
 
+const footerLegal = [
+  { href: "/privacy", label: "Конфиденциальность" },
+  { href: "/terms", label: "Условия использования" },
+] as const;
+
 /** Логотип VK (монохромный, currentColor). */
 function VkIcon({ className }: { className?: string }) {
   return (
@@ -47,6 +52,24 @@ export function Footer() {
               </p>
               <ul className="flex flex-col gap-2 text-sm">
                 {footerNav.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <nav aria-label="Документы" className="shrink-0">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Документы
+              </p>
+              <ul className="flex flex-col gap-2 text-sm">
+                {footerLegal.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
