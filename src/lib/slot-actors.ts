@@ -2,11 +2,15 @@ import { dbUrgent } from "@/lib/prisma";
 
 export type SyncSlotActorsResult =
   | { ok: true }
-  | { ok: false; error: "missing_slot" | "missing_actors" | "mismatch" };
+  | {
+      ok: false;
+      error: "missing_slot" | "missing_actors" | "city_mismatch" | "mismatch";
+    };
 
 /**
  * Синхронизация актёров слота только через Prisma Client API
  * (без $queryRaw / UNNEST / VALUES — они дают syntax error на adapter+pooler).
+ * Актёры должны быть из того же города, что и квест слота.
  */
 export async function syncSlotActors(
   slotId: string,
@@ -19,16 +23,23 @@ export async function syncSlotActors(
   return dbUrgent(async (prisma) => {
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },
-      select: { id: true },
+      select: {
+        id: true,
+        quest: { select: { cityId: true } },
+      },
     });
     if (!slot) return { ok: false, error: "missing_slot" };
 
     if (uniqueIds.length > 0) {
-      const found = await prisma.actor.count({
+      const actors = await prisma.actor.findMany({
         where: { id: { in: uniqueIds } },
+        select: { id: true, cityId: true },
       });
-      if (found !== uniqueIds.length) {
+      if (actors.length !== uniqueIds.length) {
         return { ok: false, error: "missing_actors" };
+      }
+      if (actors.some((a) => a.cityId !== slot.quest.cityId)) {
+        return { ok: false, error: "city_mismatch" };
       }
     }
 

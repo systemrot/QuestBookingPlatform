@@ -24,7 +24,7 @@ export type ProfileBookingRow = {
   expiresAt: string | null;
   slot: {
     startTime: string;
-    quest: { title: string };
+    quest: { title: string; city?: { name: string; slug: string } | null };
   };
 };
 
@@ -284,7 +284,9 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium leading-snug">
-                        {booking.slot.quest.title}
+                        {booking.slot.quest.city?.name
+                          ? `${booking.slot.quest.city.name} · ${booking.slot.quest.title}`
+                          : booking.slot.quest.title}
                       </p>
                       <BookingStatusBadge status={booking.status} />
                     </div>
@@ -353,7 +355,9 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
                     ) : null}
                     <TableCell className="max-w-0 font-medium">
                       <span className="line-clamp-2">
-                        {booking.slot.quest.title}
+                        {booking.slot.quest.city?.name
+                          ? `${booking.slot.quest.city.name} · ${booking.slot.quest.title}`
+                          : booking.slot.quest.title}
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

@@ -89,7 +89,11 @@ export default async function BookingsPage() {
               <Card className="border-border/80 bg-card/50">
                 <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
                   <div>
-                    <CardTitle className="text-base">{b.slot.quest.title}</CardTitle>
+                    <CardTitle className="text-base">
+                      {b.slot.quest.city?.name
+                        ? `${b.slot.quest.city.name} · ${b.slot.quest.title}`
+                        : b.slot.quest.title}
+                    </CardTitle>
                     <CardDescription>
                       {formatRu(b.slot.startTime, "EEE, d MMMM, HH:mm")}{" "}
                       –{" "}

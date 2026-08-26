@@ -3,6 +3,7 @@ import {
   QuestCatalogCard,
   type QuestForCatalog,
 } from "@/components/quest-catalog-card";
+import { getSelectedCity } from "@/lib/city";
 import { getQuestCatalog } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,12 @@ export default async function HomePage() {
   const session = await auth();
 
   let catalogUnavailable = false;
+  let cityName = "";
   let quests: Awaited<ReturnType<typeof getQuestCatalog>> = [];
   try {
-    quests = await getQuestCatalog();
+    const city = await getSelectedCity();
+    cityName = city.name;
+    quests = await getQuestCatalog(city.id);
   } catch {
     catalogUnavailable = true;
   }
@@ -42,6 +46,7 @@ export default async function HomePage() {
       <section className="space-y-4">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">
           Бронирование квестов
+          {cityName ? ` · ${cityName}` : ""}
         </p>
         <h1 className="max-w-2xl font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
           Яркие сценарии и живые эмоции — в одном шаге от вас.
@@ -54,7 +59,14 @@ export default async function HomePage() {
 
       <section className="space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="font-heading text-xl font-medium">Каталог квестов</h2>
+          <h2 className="font-heading text-xl font-medium">
+            Каталог квестов
+            {cityName ? (
+              <span className="ml-2 text-base font-normal text-muted-foreground">
+                {cityName}
+              </span>
+            ) : null}
+          </h2>
           {!catalogUnavailable ? (
             <span className="text-xs text-muted-foreground">
               {catalog.length}{" "}

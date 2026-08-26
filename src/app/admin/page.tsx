@@ -3,7 +3,9 @@ import Link from "next/link";
 import { AssignActorsPicker } from "@/components/admin/assign-actors-picker";
 import { BookingAdminActions } from "@/components/admin/booking-admin-actions";
 import { BookingStatusBadge } from "@/components/booking-status";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { listCities } from "@/lib/city";
 import { getAdminPageData } from "@/lib/data";
 import { formatRu } from "@/lib/locale";
 import { displayRuPhoneFromStored } from "@/lib/ru-phone";
@@ -18,8 +20,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
-  const { actors, bookedSlots } = await getAdminPageData();
+type Props = {
+  searchParams: Promise<{ city?: string }>;
+};
+
+export default async function AdminPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const cities = await listCities();
+  const cityFilter =
+    params.city &&
+    (params.city === "all" || cities.some((c) => c.slug === params.city))
+      ? params.city
+      : "all";
+
+  const { actors, bookedSlots } = await getAdminPageData(cityFilter);
 
   return (
     <main className="space-y-6">
@@ -27,8 +41,7 @@ export default async function AdminPage() {
         <div className="space-y-1">
           <h1 className="font-heading text-2xl font-semibold">Расписание</h1>
           <p className="text-sm text-muted-foreground">
-            Активные брони и холды. Параллельных сеансов нет — одно время на
-            всю площадку.
+            Активные брони и холды. Актёров назначайте только из города слота.
           </p>
         </div>
         <Link
@@ -37,6 +50,34 @@ export default async function AdminPage() {
         >
           Отчёты и выплаты
         </Link>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/admin?city=all"
+          className={cn(
+            buttonVariants({
+              variant: cityFilter === "all" ? "default" : "outline",
+              size: "sm",
+            })
+          )}
+        >
+          Все города
+        </Link>
+        {cities.map((c) => (
+          <Link
+            key={c.id}
+            href={`/admin?city=${c.slug}`}
+            className={cn(
+              buttonVariants({
+                variant: cityFilter === c.slug ? "default" : "outline",
+                size: "sm",
+              })
+            )}
+          >
+            {c.name}
+          </Link>
+        ))}
       </div>
 
       {bookedSlots.length === 0 ? (
@@ -52,6 +93,9 @@ export default async function AdminPage() {
         <ul className="flex flex-col gap-3">
           {bookedSlots.map((slot) => {
             const booking = slot.bookings[0];
+            const cityActors = actors.filter(
+              (a) => a.cityId === slot.quest.city.id
+            );
             return (
               <li key={slot.id}>
                 <Card className="border-border/80 bg-card/50">
@@ -59,6 +103,9 @@ export default async function AdminPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="font-normal">
+                            {slot.quest.city.name}
+                          </Badge>
                           <h2 className="font-heading text-base font-semibold leading-snug">
                             {slot.quest.title}
                           </h2>
@@ -119,7 +166,7 @@ export default async function AdminPage() {
 
                       <div className="min-w-0 space-y-2">
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Актёры
+                          Актёры · {slot.quest.city.name}
                         </p>
                         <AssignActorsPicker
                           key={`${slot.id}:${slot.assignments
@@ -127,7 +174,7 @@ export default async function AdminPage() {
                             .sort()
                             .join(",")}`}
                           slotId={slot.id}
-                          actors={actors}
+                          actors={cityActors}
                           assignedActors={slot.assignments.map((a) => ({
                             id: a.actor.id,
                             name: a.actor.name,

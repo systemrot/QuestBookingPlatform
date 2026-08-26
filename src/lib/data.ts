@@ -12,18 +12,24 @@ const userBookingSelect = {
       startTime: true,
       endTime: true,
       price: true,
-      quest: { select: { title: true } },
+      quest: {
+        select: {
+          title: true,
+          city: { select: { name: true, slug: true } },
+        },
+      },
     },
   },
 } as const;
 
-export function getQuestCatalog() {
+export function getQuestCatalog(cityId: string) {
   return cachedRead(
-    CacheKeys.questCatalog,
+    CacheKeys.questCatalog(cityId),
     { ttlMs: CacheTTL.quests, tags: [CacheTags.quests] },
     () =>
       dbUrgent((prisma) =>
         prisma.quest.findMany({
+          where: { cityId },
           orderBy: { title: "asc" },
         })
       )
@@ -38,7 +44,6 @@ export function getUserBookings(userId: string) {
       tags: [CacheTags.userBookings(userId)],
     },
     () =>
-      // Только чтение — expire на hot-path рвал пул (Connection terminated → /bookings 500).
       dbUrgent((prisma) =>
         prisma.booking.findMany({
           where: { userId },
@@ -98,15 +103,16 @@ export function getAvailableSlotsForDay(
   );
 }
 
-export function getAdminActors() {
+export function getAdminActors(cityId?: string) {
   return cachedRead(
-    CacheKeys.adminActors,
+    CacheKeys.adminActors(cityId),
     { ttlMs: CacheTTL.adminActors, tags: [CacheTags.adminActors] },
     () =>
       dbUrgent((prisma) =>
         prisma.actor.findMany({
+          where: cityId ? { cityId } : undefined,
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, cityId: true },
         })
       )
   );
@@ -133,7 +139,12 @@ export function getAdminBookedSlots() {
           select: {
             id: true,
             startTime: true,
-            quest: { select: { title: true } },
+            quest: {
+              select: {
+                title: true,
+                city: { select: { id: true, slug: true, name: true } },
+              },
+            },
             bookings: {
               where: {
                 OR: [
@@ -147,7 +158,9 @@ export function getAdminBookedSlots() {
                 id: true,
                 status: true,
                 expiresAt: true,
-                user: { select: { id: true, name: true, email: true, phone: true } },
+                user: {
+                  select: { id: true, name: true, email: true, phone: true },
+                },
               },
             },
             assignments: {
@@ -165,9 +178,9 @@ export function getAdminBookedSlots() {
   );
 }
 
-export function getAdminActorStats() {
+export function getAdminActorStats(cityId?: string) {
   return cachedRead(
-    CacheKeys.adminActorStats,
+    CacheKeys.adminActorStats(cityId),
     {
       ttlMs: CacheTTL.adminSchedule,
       tags: [CacheTags.adminSchedule, CacheTags.adminActors],
@@ -175,10 +188,12 @@ export function getAdminActorStats() {
     () =>
       dbUrgent((prisma) =>
         prisma.actor.findMany({
+          where: cityId ? { cityId } : undefined,
           select: {
             id: true,
             name: true,
             hourlyRate: true,
+            city: { select: { name: true, slug: true } },
             assignments: {
               select: {
                 slot: {
@@ -196,17 +211,22 @@ export function getAdminActorStats() {
   );
 }
 
+export type AdminCityFilter = "all" | string;
+
 /** Расписание админки: без in-memory cache — иначе после назначения актёров
  *  refresh часто отдавал старый пустой снимок (loader дописывал cache после invalidate). */
-export async function getAdminPageData() {
+export async function getAdminPageData(citySlug: AdminCityFilter = "all") {
   const now = new Date();
   return dbUrgent(async (prisma) => {
-    type ActorRow = { id: string; name: string };
+    type ActorRow = { id: string; name: string; cityId: string };
     type Row = {
       id: string;
       startTime: Date;
       endTime: Date;
       questTitle: string;
+      cityId: string;
+      citySlug: string;
+      cityName: string;
       bookingId: string;
       status: "PENDING" | "PAID" | "CANCELLED";
       expiresAt: Date | null;
@@ -218,15 +238,20 @@ export async function getAdminPageData() {
     };
 
     const actors = await prisma.$queryRaw<ActorRow[]>`
-      SELECT id, name FROM "Actor" ORDER BY name ASC
+      SELECT id, name, "cityId" FROM "Actor" ORDER BY name ASC
     `;
 
-    const rows = await prisma.$queryRaw<Row[]>`
+    const rows =
+      citySlug === "all"
+        ? await prisma.$queryRaw<Row[]>`
       SELECT
         s.id,
         s."startTime",
         s."endTime",
         q.title AS "questTitle",
+        c.id AS "cityId",
+        c.slug AS "citySlug",
+        c.name AS "cityName",
         b.id AS "bookingId",
         b.status,
         b."expiresAt",
@@ -237,6 +262,7 @@ export async function getAdminPageData() {
         u.phone AS "userPhone"
       FROM "Slot" s
       JOIN "Quest" q ON q.id = s."questId"
+      JOIN "City" c ON c.id = q."cityId"
       JOIN LATERAL (
         SELECT b0.*
         FROM "Booking" b0
@@ -253,6 +279,45 @@ export async function getAdminPageData() {
         LIMIT 1
       ) b ON true
       JOIN "User" u ON u.id = b."userId"
+      ORDER BY s."startTime" ASC
+    `
+        : await prisma.$queryRaw<Row[]>`
+      SELECT
+        s.id,
+        s."startTime",
+        s."endTime",
+        q.title AS "questTitle",
+        c.id AS "cityId",
+        c.slug AS "citySlug",
+        c.name AS "cityName",
+        b.id AS "bookingId",
+        b.status,
+        b."expiresAt",
+        b."createdAt" AS "bookingCreatedAt",
+        u.id AS "userId",
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u.phone AS "userPhone"
+      FROM "Slot" s
+      JOIN "Quest" q ON q.id = s."questId"
+      JOIN "City" c ON c.id = q."cityId"
+      JOIN LATERAL (
+        SELECT b0.*
+        FROM "Booking" b0
+        WHERE b0."slotId" = s.id
+          AND (
+            b0.status = 'PAID'::"BookingStatus"
+            OR (
+              b0.status = 'PENDING'::"BookingStatus"
+              AND b0."expiresAt" IS NOT NULL
+              AND b0."expiresAt" > ${now}
+            )
+          )
+        ORDER BY b0."createdAt" DESC
+        LIMIT 1
+      ) b ON true
+      JOIN "User" u ON u.id = b."userId"
+      WHERE c.slug = ${citySlug}
       ORDER BY s."startTime" ASC
     `;
 
@@ -291,7 +356,14 @@ export async function getAdminPageData() {
         id: row.id,
         startTime: row.startTime,
         endTime: row.endTime,
-        quest: { title: row.questTitle },
+        quest: {
+          title: row.questTitle,
+          city: {
+            id: row.cityId,
+            slug: row.citySlug,
+            name: row.cityName,
+          },
+        },
         bookings: [
           {
             id: row.bookingId,

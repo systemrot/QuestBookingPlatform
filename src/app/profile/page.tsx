@@ -38,7 +38,12 @@ export default async function ProfilePage() {
     expiresAt: b.expiresAt ? b.expiresAt.toISOString() : null,
     slot: {
       startTime: b.slot.startTime.toISOString(),
-      quest: { title: b.slot.quest.title },
+      quest: {
+        title: b.slot.quest.title,
+        city: b.slot.quest.city
+          ? { name: b.slot.quest.city.name, slug: b.slot.quest.city.slug }
+          : null,
+      },
     },
   }));
 

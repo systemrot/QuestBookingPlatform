@@ -16,7 +16,6 @@ import {
   slotEndTime,
 } from "@/lib/booking-policy";
 import { invalidateAdminData, invalidateUserBookingData } from "@/lib/cache";
-import { getQuestCatalog } from "@/lib/data";
 import { markBookingPaid } from "@/lib/payments/complete-booking";
 import { dbUrgent } from "@/lib/prisma";
 import {
@@ -57,8 +56,12 @@ export async function getAvailableSlots(questId: string, dateStr: string) {
     return { error: "Некорректная дата." as const };
   }
 
-  const catalog = await getQuestCatalog();
-  const quest = catalog.find((q) => q.id === questId);
+  const quest = await dbUrgent((prisma) =>
+    prisma.quest.findUnique({
+      where: { id: questId },
+      select: { id: true, price: true },
+    })
+  );
   if (!quest) {
     return { error: "Квест не найден." as const };
   }

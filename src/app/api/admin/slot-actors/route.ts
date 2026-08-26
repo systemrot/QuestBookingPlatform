@@ -51,6 +51,12 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+      if (result.error === "city_mismatch") {
+        return Response.json(
+          { error: "Актёр из другого города — нельзя назначить на этот слот." },
+          { status: 400 }
+        );
+      }
       return Response.json(
         { error: "Не удалось сохранить актёров. Попробуйте ещё раз." },
         { status: 500 }

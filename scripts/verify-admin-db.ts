@@ -27,13 +27,23 @@ async function main() {
   console.log(JSON.stringify({ step: "ping", ms: Date.now() - t0, ping }));
 
   const t1 = Date.now();
-  const catalog = await getQuestCatalog();
+  const cities = await db((p: {
+    city: { findMany: Function };
+  }) => p.city.findMany({ select: { id: true, slug: true } }));
+  const cityId = cities[0]?.id as string | undefined;
+  if (!cityId) throw new Error("No cities — run migrate + seed");
+  const catalog = await getQuestCatalog(cityId);
   console.log(
-    JSON.stringify({ step: "catalog", ms: Date.now() - t1, n: catalog.length })
+    JSON.stringify({
+      step: "catalog",
+      ms: Date.now() - t1,
+      n: catalog.length,
+      city: cities[0]?.slug,
+    })
   );
 
   const t2 = Date.now();
-  const admin = await getAdminPageData();
+  const admin = await getAdminPageData("all");
   console.log(
     JSON.stringify({
       step: "admin",
@@ -44,7 +54,7 @@ async function main() {
   );
 
   const t3 = Date.now();
-  await Promise.all([getQuestCatalog(), getAdminPageData()]);
+  await Promise.all([getQuestCatalog(cityId), getAdminPageData("all")]);
   console.log(JSON.stringify({ step: "parallel-catalog+admin", ms: Date.now() - t3 }));
 
   console.log(JSON.stringify({ ok: true, totalMs: Date.now() - t0 }));

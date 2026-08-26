@@ -38,6 +38,7 @@ export default async function AdminReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Город</TableHead>
                   <TableHead>Актер</TableHead>
                   <TableHead>Всего игр</TableHead>
                   <TableHead>Заработано (₽)</TableHead>
@@ -46,6 +47,9 @@ export default async function AdminReportsPage() {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.actorId}>
+                    <TableCell className="text-muted-foreground">
+                      {row.cityName}
+                    </TableCell>
                     <TableCell className="font-medium">{row.actorName}</TableCell>
                     <TableCell>{row.gamesCount}</TableCell>
                     <TableCell>{formatRub(row.earnedRub)}</TableCell>

@@ -74,12 +74,14 @@ export const CacheTags = {
 } as const;
 
 export const CacheKeys = {
-  questCatalog: "quests:catalog",
+  questCatalog: (cityId: string) => `quests:catalog:${cityId}`,
   userBookings: (userId: string) => `user:${userId}:bookings`,
   userProfilePage: (userId: string) => `user:${userId}:profile-page`,
-  adminActors: "admin:actors-list",
+  adminActors: (cityId?: string) =>
+    cityId ? `admin:actors-list:${cityId}` : "admin:actors-list",
   adminBookedSlots: "admin:booked-slots",
-  adminActorStats: "admin:actor-stats",
+  adminActorStats: (cityId?: string) =>
+    cityId ? `admin:actor-stats:${cityId}` : "admin:actor-stats",
   availableSlots: (questId: string, dateStr: string) =>
     `slots:${questId}:${dateStr}`,
 } as const;

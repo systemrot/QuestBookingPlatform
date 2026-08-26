@@ -139,7 +139,9 @@ export function AssignActorsPicker({ slotId, actors, assignedActors }: Props) {
       )}
 
       {actors.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Список актёров пуст</p>
+        <p className="text-xs text-muted-foreground">
+          Список актёров пуст — добавьте записи в таблицу Actor (seed) или через БД.
+        </p>
       ) : (
         <div className="space-y-2">
           <Button

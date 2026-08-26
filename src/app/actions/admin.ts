@@ -41,6 +41,11 @@ export async function setSlotActors(slotId: string, actorIds: string[]) {
       if (result.error === "missing_actors") {
         return { error: "Один из актёров не найден." };
       }
+      if (result.error === "city_mismatch") {
+        return {
+          error: "Актёр из другого города — нельзя назначить на этот слот.",
+        };
+      }
       return { error: "Не удалось сохранить актёров. Попробуйте ещё раз." };
     }
 
@@ -55,6 +60,7 @@ export async function setSlotActors(slotId: string, actorIds: string[]) {
 export type ActorStatsRow = {
   actorId: string;
   actorName: string;
+  cityName: string;
   hourlyRate: number;
   hoursWorked: number;
   totalPay: number;
@@ -78,6 +84,7 @@ export async function getActorStats(): Promise<ActorStatsRow[]> {
     return {
       actorId: actor.id,
       actorName: actor.name,
+      cityName: actor.city.name,
       hourlyRate,
       hoursWorked: Number(hoursWorked.toFixed(2)),
       totalPay,
@@ -88,6 +95,7 @@ export async function getActorStats(): Promise<ActorStatsRow[]> {
 export type ActorSalaryRow = {
   actorId: string;
   actorName: string;
+  cityName: string;
   gamesCount: number;
   earnedRub: number;
 };
@@ -102,9 +110,10 @@ export async function getActorSalaryReport(): Promise<ActorSalaryRow[]> {
         id: true,
         name: true,
         hourlyRate: true,
+        city: { select: { name: true } },
         _count: { select: { assignments: true } },
       },
-      orderBy: { name: "asc" },
+      orderBy: [{ city: { name: "asc" } }, { name: "asc" }],
     })
   );
 
@@ -114,6 +123,7 @@ export async function getActorSalaryReport(): Promise<ActorSalaryRow[]> {
     return {
       actorId: actor.id,
       actorName: actor.name,
+      cityName: actor.city.name,
       gamesCount,
       earnedRub,
     };

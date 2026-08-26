@@ -37,16 +37,32 @@ model User {
   messagesReceived   ChatMessage[] @relation("MessageReceiver")
 }
 
+model City {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quests Quest[]
+  actors Actor[]
+}
+
 model Quest {
   id          String   @id @default(cuid())
   title       String
   description String?
   image       String?
   price       Decimal  @db.Decimal(10, 2)
+  cityId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  city  City   @relation(fields: [cityId], references: [id], onDelete: Restrict)
   slots Slot[]
+
+  @@unique([cityId, title])
+  @@index([cityId])
 }
 
 model Slot {
@@ -91,10 +107,14 @@ model Actor {
   id         String   @id @default(cuid())
   name       String
   hourlyRate Decimal  @db.Decimal(10, 2)
+  cityId     String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  city        City         @relation(fields: [cityId], references: [id], onDelete: Restrict)
   assignments Assignment[]
+
+  @@index([cityId])
 }
 
 model Assignment {
