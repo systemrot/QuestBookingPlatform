@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AssignActorsPicker } from "@/components/admin/assign-actors-picker";
 import { BookingAdminActions } from "@/components/admin/booking-admin-actions";
+import { BookingNoteEditor } from "@/components/admin/booking-note-editor";
 import { BookingStatusBadge } from "@/components/booking-status";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -182,6 +183,19 @@ export default async function AdminPage({ searchParams }: Props) {
                         />
                       </div>
                     </div>
+
+                    {booking ? (
+                      <div className="space-y-2 border-t border-border/60 pt-4">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Комментарий
+                        </p>
+                        <BookingNoteEditor
+                          key={`${booking.id}:${booking.note ?? ""}`}
+                          bookingId={booking.id}
+                          initialNote={booking.note ?? ""}
+                        />
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
               </li>

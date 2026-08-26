@@ -231,6 +231,7 @@ export async function getAdminPageData(citySlug: AdminCityFilter = "all") {
       status: "PENDING" | "PAID" | "CANCELLED";
       expiresAt: Date | null;
       bookingCreatedAt: Date;
+      bookingNote: string | null;
       userId: string;
       userName: string;
       userEmail: string;
@@ -256,6 +257,7 @@ export async function getAdminPageData(citySlug: AdminCityFilter = "all") {
         b.status,
         b."expiresAt",
         b."createdAt" AS "bookingCreatedAt",
+        b.note AS "bookingNote",
         u.id AS "userId",
         u.name AS "userName",
         u.email AS "userEmail",
@@ -294,6 +296,7 @@ export async function getAdminPageData(citySlug: AdminCityFilter = "all") {
         b.status,
         b."expiresAt",
         b."createdAt" AS "bookingCreatedAt",
+        b.note AS "bookingNote",
         u.id AS "userId",
         u.name AS "userName",
         u.email AS "userEmail",
@@ -370,6 +373,7 @@ export async function getAdminPageData(citySlug: AdminCityFilter = "all") {
             status: row.status,
             expiresAt: row.expiresAt,
             createdAt: row.bookingCreatedAt,
+            note: row.bookingNote,
             user: {
               id: row.userId,
               name: row.userName,

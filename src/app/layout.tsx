@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Geist_Mono, Montserrat } from "next/font/google";
 
 import { auth } from "@/auth";
@@ -12,9 +11,6 @@ import "./globals.css";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-
-const CINEMATIC_BG_IMAGE =
-  "https://images.unsplash.com/photo-1741993348688-544565cfcfe3?auto=format&fit=crop&w=2400&q=85";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -45,26 +41,7 @@ export default async function RootLayout({
       className={`dark ${montserrat.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-transparent text-foreground">
-        <div aria-hidden className="cinematic-bg">
-          <Image
-            src={CINEMATIC_BG_IMAGE}
-            alt=""
-            fill
-            priority
-            fetchPriority="high"
-            sizes="100vw"
-            quality={75}
-            // Unsplash через /_next/image часто таймаутится 10–20с и тормозит первый paint.
-            unoptimized
-            className="cinematic-bg-image"
-          />
-          <div className="cinematic-bg-vignette" />
-          <div className="cinematic-bg-grade" />
-          <div className="cinematic-bg-overlay" />
-          <div className="cinematic-bg-grain" />
-          <div className="cinematic-bg-scanlines" />
-        </div>
+      <body className="flex min-h-full flex-col bg-background text-foreground">
         <SiteHeader />
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
           <div className="flex-1">{children}</div>

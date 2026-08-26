@@ -90,6 +90,8 @@ model Booking {
   slotId    String
   status    BookingStatus @default(PENDING)
   paymentId String?
+  /// Заметки / пожелания к броне (админ).
+  note      String?
   /// До какого момента PENDING удерживает слот. Для PAID/CANCELLED обычно null.
   expiresAt DateTime? @db.Timestamptz(3)
   createdAt DateTime      @default(now())
