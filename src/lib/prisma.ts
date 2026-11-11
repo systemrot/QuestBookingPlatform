@@ -17,7 +17,7 @@ const globalForPrisma = globalThis as unknown as PrismaGlobal;
  * - long-lived reuse → ECONNRESET / "timeout exceeded"
  * - maxUses:5 + keepAlive → 20/20 OK in ~2.5s
  */
-const POOL_CONFIG_KEY = "tx6543-maxUses5-v9-booking-note";
+const POOL_CONFIG_KEY = "tx6543-maxUses5-v10-owner-role";
 
 function normalizeDatabaseUrl(raw: string): string {
   try {

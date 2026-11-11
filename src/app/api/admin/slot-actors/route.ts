@@ -1,10 +1,11 @@
 import { auth } from "@/auth";
 import { invalidateAdminData } from "@/lib/cache";
+import { isStaff } from "@/lib/roles";
 import { syncSlotActors } from "@/lib/slot-actors";
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || !isStaff(session.user.role)) {
     return Response.json({ error: "Недостаточно прав." }, { status: 403 });
   }
 

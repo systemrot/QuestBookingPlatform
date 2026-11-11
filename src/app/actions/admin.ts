@@ -13,12 +13,13 @@ import {
 } from "@/lib/pending-hold";
 import { markBookingPaid } from "@/lib/payments/complete-booking";
 import { db, dbUrgent } from "@/lib/prisma";
+import { isStaff } from "@/lib/roles";
 import { syncSlotActors } from "@/lib/slot-actors";
 
 type SessionLike = { user?: { id?: string; role?: string } } | null;
 
 function ensureAdmin(session: SessionLike) {
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || !isStaff(session.user.role)) {
     throw new Error("Недостаточно прав");
   }
 }
@@ -27,7 +28,7 @@ function ensureAdmin(session: SessionLike) {
 export async function setSlotActors(slotId: string, actorIds: string[]) {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!session?.user?.id || !isStaff(session.user.role)) {
       return { error: "Недостаточно прав." };
     }
 

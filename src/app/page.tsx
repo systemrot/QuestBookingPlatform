@@ -33,7 +33,9 @@ export default async function HomePage() {
 
   // Без role карточка думает «сессия есть», но слоты не грузит (пустой блок).
   const sessionInfo =
-    session?.user?.role === "USER" || session?.user?.role === "ADMIN"
+    session?.user?.role === "USER" ||
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "OWNER"
       ? {
           role: session.user.role,
           name: session.user.name,

@@ -47,7 +47,7 @@ export type QuestForCatalog = {
 };
 
 type SessionInfo = {
-  role: "USER" | "ADMIN";
+  role: "USER" | "ADMIN" | "OWNER";
   name?: string | null;
   email?: string | null;
 } | null;
@@ -283,7 +283,7 @@ export function QuestCatalogCard({
                   </div>
                 )}
 
-                {session?.role === "ADMIN" && (
+                {(session?.role === "ADMIN" || session?.role === "OWNER") && (
                   <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
                     Администратор не может оформить бронирование. Войдите как клиент.
                   </p>

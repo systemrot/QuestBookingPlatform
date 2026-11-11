@@ -19,12 +19,12 @@ const googleConfigured =
 const vkConfigured =
   Boolean(process.env.AUTH_VK_ID) && Boolean(process.env.AUTH_VK_SECRET);
 
+import { isAppRole, type AppRole } from "@/lib/roles";
+
 const OAUTH_PROVIDERS = new Set(["yandex", "google", "vk"]);
 
-type AppRole = "USER" | "ADMIN";
-
 function hasAppRole(role: unknown): role is AppRole {
-  return role === "USER" || role === "ADMIN";
+  return isAppRole(role);
 }
 
 function resolveOAuthEmail(

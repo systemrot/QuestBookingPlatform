@@ -6,10 +6,11 @@ import type { ReactNode } from "react";
 
 import { buttonVariants } from "@/components/ui/button-variants";
 import { SignOutButton } from "@/components/sign-out-button";
+import { isStaff } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 type SessionUser = {
-  role: "USER" | "ADMIN";
+  role: "USER" | "ADMIN" | "OWNER";
   name?: string | null;
   email?: string | null;
 };
@@ -83,7 +84,7 @@ export function SiteNav({ session }: { session: { user: SessionUser } | null }) 
               </NavLink>
             </>
           )}
-          {session.user.role === "ADMIN" && (
+          {isStaff(session.user.role) && (
             <NavLink href="/admin" short="Админ">
               Админка
             </NavLink>

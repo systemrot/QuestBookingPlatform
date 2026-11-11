@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 
 import { authConfig } from "@/auth.config";
+import { isStaff } from "@/lib/roles";
 import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
@@ -15,6 +16,8 @@ export const proxy = auth((req) => {
     path === "/bookings" ||
     path.startsWith("/bookings/");
   const isAdmin = path.startsWith("/admin");
+  const isOwnerOnly =
+    path.startsWith("/admin/quests") || path.startsWith("/admin/actors");
 
   if (isUserOnly) {
     if (!session?.user) {
@@ -33,8 +36,11 @@ export const proxy = auth((req) => {
       login.searchParams.set("callbackUrl", path);
       return NextResponse.redirect(login);
     }
-    if (session.user.role !== "ADMIN") {
+    if (!isStaff(session.user.role)) {
       return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+    }
+    if (isOwnerOnly && session.user.role !== "OWNER") {
+      return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
     }
   }
 

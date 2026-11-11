@@ -50,6 +50,7 @@ export default async function ProfilePage() {
   const roleLabel: Record<string, string> = {
     USER: "Пользователь",
     ADMIN: "Администратор",
+    OWNER: "Владелец",
   };
 
   return (

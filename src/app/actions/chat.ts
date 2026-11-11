@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { parseChatMessage } from "@/lib/field-limits";
 import { db, dbUrgent } from "@/lib/prisma";
+import { isStaff } from "@/lib/roles";
 
 type SessionLike = { user?: { id?: string; role?: string } } | null;
 
@@ -13,7 +14,7 @@ function ensureUser(session: SessionLike) {
 }
 
 function ensureAdmin(session: SessionLike) {
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || !isStaff(session.user.role)) {
     throw new Error("Недостаточно прав");
   }
 }
@@ -39,7 +40,7 @@ async function resolveAdminId() {
 
   const admin = await db((prisma) =>
     prisma.user.findFirst({
-      where: { role: "ADMIN" },
+      where: { role: { in: ["ADMIN", "OWNER"] } },
       orderBy: { createdAt: "asc" },
       select: { id: true },
     })
@@ -174,7 +175,7 @@ export async function getAdminConversation(
   options?: { markRead?: boolean }
 ): Promise<ChatMessageDto[]> {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || !isStaff(session.user.role)) {
     return [];
   }
   const adminId = session.user.id;
@@ -267,7 +268,7 @@ export async function getAdminInboxPulse(): Promise<{
 }> {
   try {
     const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!session?.user?.id || !isStaff(session.user.role)) {
       return { count: 0, notifications: [] };
     }
     const adminId = session.user.id;
