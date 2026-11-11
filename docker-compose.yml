@@ -18,5 +18,52 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      target: runner
+      # Host network so the build can reach Postgres on 127.0.0.1 while prerendering.
+      network: host
+      args:
+        BUILD_DATABASE_URL: ${BUILD_DATABASE_URL}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Europe/Moscow
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    profiles: ["app"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  tools:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: tools
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

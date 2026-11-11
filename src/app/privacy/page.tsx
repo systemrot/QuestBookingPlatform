@@ -27,10 +27,10 @@ export default function PrivacyPage() {
             Настоящая Политика описывает, какие данные мы получаем при использовании сервиса
             бронирования квестов «{siteConfig.brandName}» (далее — Сервис), расположенного по адресу{" "}
             <a
-              href="https://quest-booking-platform.vercel.app"
+              href="https://nekvest.ru"
               className="text-foreground underline-offset-4 hover:underline"
             >
-              quest-booking-platform.vercel.app
+              nekvest.ru
             </a>
             , и как мы их используем.
           </p>
