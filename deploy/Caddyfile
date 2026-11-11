@@ -6,3 +6,9 @@
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
 }
+
+# Temporary preview until DNS for nekvest.ru propagates. Remove after cutover.
+http://176.53.238.70 {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
