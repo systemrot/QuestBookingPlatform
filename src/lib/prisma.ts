@@ -12,19 +12,20 @@ type PrismaGlobal = {
 
 const globalForPrisma = globalThis as unknown as PrismaGlobal;
 
-/**
- * Verified against live Supabase TX pooler (scripts/storm-db.ts):
- * - long-lived reuse → ECONNRESET / "timeout exceeded"
- * - maxUses:5 + keepAlive → 20/20 OK in ~2.5s
- */
-const POOL_CONFIG_KEY = "tx6543-maxUses5-v10-owner-role";
+const POOL_CONFIG_KEY = "v11-self-hosted-pg";
 
-function normalizeDatabaseUrl(raw: string): string {
+function isSupabasePooler(raw: string): boolean {
+  try {
+    return new URL(raw).hostname.includes("pooler.supabase.com");
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSupabaseUrl(raw: string): string {
   try {
     const u = new URL(raw);
-    if (u.port === "5432" && u.hostname.includes("pooler.supabase.com")) {
-      u.port = "6543";
-    }
+    if (u.port === "5432") u.port = "6543";
     u.searchParams.set("pgbouncer", "true");
     u.searchParams.set("sslmode", "no-verify");
     u.searchParams.delete("options");
@@ -34,18 +35,35 @@ function normalizeDatabaseUrl(raw: string): string {
   }
 }
 
+function envInt(name: string, fallback: number): number {
+  const value = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function createPgPool(url: string) {
-  const pool = new pg.Pool({
-    connectionString: normalizeDatabaseUrl(url),
-    max: 3,
-    // Recycle before Supabase/pooler silently drops the socket.
-    maxUses: 5,
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 8_000,
-    allowExitOnIdle: true,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 5_000,
-  });
+  /**
+   * Supabase TX pooler (scripts/storm-db.ts): long-lived sockets get dropped
+   * (ECONNRESET / "timeout exceeded"); max:3 + maxUses:5 + keepAlive is stable.
+   * A plain Postgres keeps connections fine, so use a normal pool there.
+   */
+  const pool = isSupabasePooler(url)
+    ? new pg.Pool({
+        connectionString: normalizeSupabaseUrl(url),
+        max: 3,
+        maxUses: 5,
+        idleTimeoutMillis: 5_000,
+        connectionTimeoutMillis: 8_000,
+        allowExitOnIdle: true,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 5_000,
+      })
+    : new pg.Pool({
+        connectionString: url,
+        max: envInt("DATABASE_POOL_MAX", 10),
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 5_000,
+        keepAlive: true,
+      });
 
   pool.on("error", (err) => {
     console.error("[db] idle client error:", err.message);
@@ -86,8 +104,8 @@ async function resetPrismaPool() {
 
 function getDatabaseUrl(): string {
   const preferred =
-    process.env.DATABASE_URL_TX ||
     process.env.DATABASE_URL ||
+    process.env.DATABASE_URL_TX ||
     process.env.DATABASE_URL_SESSION;
   if (!preferred) throw new Error("DATABASE_URL is not set");
   return preferred;
@@ -125,7 +143,7 @@ function getPrismaClient(): PrismaClient {
   }
 
   throw new Error(
-    `Unsupported DATABASE_URL protocol. Use postgresql:// (Supabase) or prisma+postgres:// (Prisma dev). Got: ${url.split(":")[0]}:`
+    `Unsupported DATABASE_URL protocol. Use postgresql:// or prisma+postgres:// (Prisma dev). Got: ${url.split(":")[0]}:`
   );
 }
 
