@@ -44,32 +44,30 @@ export default async function HomePage() {
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="-mt-14">
-        <HomeHero>
-          {catalogUnavailable ? (
-            <div className="rounded-xl border border-blood/30 bg-black/55 p-10 text-center text-sm text-white/70 backdrop-blur-md">
-              <p className="font-medium text-white">Каталог временно недоступен</p>
-              <p className="mt-2">Попробуйте обновить страницу чуть позже.</p>
-            </div>
-          ) : catalog.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-blood/35 bg-black/45 p-10 text-center text-sm text-white/70 backdrop-blur-md">
-              <p className="font-medium text-white">Пока нет доступных квестов</p>
-              <p className="mt-2">Новые сценарии скоро появятся в каталоге.</p>
-            </div>
-          ) : (
-            <ul className="grid items-stretch gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-              {catalog.map((quest) => (
-                <li
-                  key={quest.id}
-                  className="min-w-0 h-full [filter:drop-shadow(0_0_34px_rgba(185,28,28,0.28))]"
-                >
-                  <QuestCatalogCard quest={quest} session={sessionInfo} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </HomeHero>
-      </div>
+      <HomeHero>
+        {catalogUnavailable ? (
+          <div className="rounded-xl border border-blood/30 bg-black/55 p-10 text-center text-sm text-white/70 backdrop-blur-md">
+            <p className="font-medium text-white">Каталог временно недоступен</p>
+            <p className="mt-2">Попробуйте обновить страницу чуть позже.</p>
+          </div>
+        ) : catalog.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-blood/35 bg-black/45 p-10 text-center text-sm text-white/70 backdrop-blur-md">
+            <p className="font-medium text-white">Пока нет доступных квестов</p>
+            <p className="mt-2">Новые сценарии скоро появятся в каталоге.</p>
+          </div>
+        ) : (
+          <ul className="grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+            {catalog.map((quest) => (
+              <li
+                key={quest.id}
+                className="min-w-0 h-full [filter:drop-shadow(0_0_34px_rgba(185,28,28,0.28))]"
+              >
+                <QuestCatalogCard quest={quest} session={sessionInfo} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </HomeHero>
     </main>
   );
 }

@@ -31,98 +31,198 @@ function VkIcon({ className }: { className?: string }) {
   );
 }
 
-export function Footer() {
+export function Footer({ embedded = false }: { embedded?: boolean }) {
   return (
-    <footer className="relative z-10 mt-auto border-0 bg-black">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="flex flex-col gap-8 md:flex-row md:justify-between md:gap-8">
-          <div className="max-w-md space-y-3">
-            <p className="font-display text-lg uppercase tracking-wide text-white">
-              {siteConfig.brandName}
-            </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {siteConfig.footerAbout}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-8 sm:flex-row sm:gap-12 md:gap-16">
-            <nav aria-label="Навигация в подвале" className="shrink-0">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Навигация
+    <footer
+      className={cn(
+        "relative mt-auto border-0 bg-black",
+        embedded ? "z-[5] border-t border-blood/55" : "z-10"
+      )}
+    >
+      <div
+        className={cn(
+          embedded
+            ? "home-split-footer-inner w-full max-w-none px-4 sm:px-6"
+            : "mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
+        )}
+      >
+        {embedded ? (
+          <>
+            <div className="home-split-footer-about space-y-3">
+              <p className="font-display text-lg uppercase tracking-wide text-white">
+                {siteConfig.brandName}
               </p>
-              <ul className="flex flex-col gap-2 text-sm">
-                {footerNav.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <nav aria-label="Документы" className="shrink-0">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Документы
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {siteConfig.footerAbout}
               </p>
-              <ul className="flex flex-col gap-2 text-sm">
-                {footerLegal.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            <div className="shrink-0">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Связаться с нами
-              </p>
-              <ul className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                <li>
-                  <a
-                    href={siteConfig.social.telegram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                      "hover:border-blood hover:text-white",
-                    )}
-                  >
-                    <Send className="size-4 shrink-0" aria-hidden />
-                    Telegram
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href={siteConfig.social.vk}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                      "hover:border-blood hover:text-white",
-                    )}
-                  >
-                    <VkIcon className="size-4 shrink-0" />
-                    ВКонтакте
-                  </a>
-                </li>
-              </ul>
             </div>
-          </div>
-        </div>
+            <div className="flex flex-col gap-8 sm:flex-row sm:flex-wrap sm:gap-10 md:gap-14">
+              <nav aria-label="Навигация в подвале" className="shrink-0">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Навигация
+                </p>
+                <ul className="flex flex-col gap-2 text-sm">
+                  {footerNav.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
 
-        <div className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground sm:mt-10 sm:pt-6">
-          © {new Date().getFullYear()} {siteConfig.brandName}. Все права защищены.
-        </div>
+              <nav aria-label="Документы" className="shrink-0">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Документы
+                </p>
+                <ul className="flex flex-col gap-2 text-sm">
+                  {footerLegal.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              <div className="shrink-0">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Связаться с нами
+                </p>
+                <ul className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <li>
+                    <a
+                      href={siteConfig.social.telegram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                        "hover:border-blood hover:text-white"
+                      )}
+                    >
+                      <Send className="size-4 shrink-0" aria-hidden />
+                      Telegram
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href={siteConfig.social.vk}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                        "hover:border-blood hover:text-white"
+                      )}
+                    >
+                      <VkIcon className="size-4 shrink-0" />
+                      ВКонтакте
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-col gap-8 md:flex-row md:justify-between md:gap-8">
+              <div className="max-w-md space-y-3">
+                <p className="font-display text-lg uppercase tracking-wide text-white">
+                  {siteConfig.brandName}
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {siteConfig.footerAbout}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-8 sm:flex-row sm:gap-12 md:gap-16">
+                <nav aria-label="Навигация в подвале" className="shrink-0">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Навигация
+                  </p>
+                  <ul className="flex flex-col gap-2 text-sm">
+                    {footerNav.map((item) => (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+
+                <nav aria-label="Документы" className="shrink-0">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Документы
+                  </p>
+                  <ul className="flex flex-col gap-2 text-sm">
+                    {footerLegal.map((item) => (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className="text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+
+                <div className="shrink-0">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Связаться с нами
+                  </p>
+                  <ul className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <li>
+                      <a
+                        href={siteConfig.social.telegram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                          "hover:border-blood hover:text-white"
+                        )}
+                      >
+                        <Send className="size-4 shrink-0" aria-hidden />
+                        Telegram
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        href={siteConfig.social.vk}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                          "hover:border-blood hover:text-white"
+                        )}
+                      >
+                        <VkIcon className="size-4 shrink-0" />
+                        ВКонтакте
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground sm:mt-10 sm:pt-6">
+              © {new Date().getFullYear()} {siteConfig.brandName}. Все права
+              защищены.
+            </div>
+          </>
+        )}
       </div>
     </footer>
   );

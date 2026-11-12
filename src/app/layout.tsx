@@ -70,10 +70,14 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-black text-foreground">
-        <SiteHeader />
+        <div className="site-chrome-header">
+          <SiteHeader />
+        </div>
         <div className="relative z-10 flex min-h-0 flex-1 flex-col bg-black">
           <div className="flex-1">{children}</div>
-          <Footer />
+          <div className="site-chrome-footer-slot">
+            <Footer />
+          </div>
         </div>
         {session?.user?.role === "USER" ? <ChatWidget /> : null}
         <Toaster richColors />
