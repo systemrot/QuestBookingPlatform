@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { HomeHero } from "@/components/home-hero";
 import {
   QuestCatalogCard,
   type QuestForCatalog,
@@ -13,25 +14,23 @@ export default async function HomePage() {
   const session = await auth();
 
   let catalogUnavailable = false;
-  let cityName = "";
   let quests: Awaited<ReturnType<typeof getQuestCatalog>> = [];
   try {
     const city = await getSelectedCity();
-    cityName = city.name;
     quests = await getQuestCatalog(city.id);
   } catch {
     catalogUnavailable = true;
   }
 
-  const catalog: QuestForCatalog[] = quests.map((q) => ({
+  const catalog: QuestForCatalog[] = quests.map((q, index) => ({
     id: q.id,
     title: q.title,
     description: q.description,
     image: q.image,
     price: q.price.toString(),
+    propVariant: (index % 3) as 0 | 1 | 2,
   }));
 
-  // Без role карточка думает «сессия есть», но слоты не грузит (пустой блок).
   const sessionInfo =
     session?.user?.role === "USER" ||
     session?.user?.role === "ADMIN" ||
@@ -44,64 +43,33 @@ export default async function HomePage() {
       : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-4 py-12 sm:px-6">
-      <section className="space-y-4">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">
-          Бронирование квестов
-          {cityName ? ` · ${cityName}` : ""}
-        </p>
-        <h1 className="max-w-2xl font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-          Яркие сценарии и живые эмоции — в одном шаге от вас.
-        </h1>
-        <p className="max-w-xl text-muted-foreground">
-          Выберите квест, удобную дату и время для вашей команды. Слот держится
-          20 минут — успеете спокойно оплатить.
-        </p>
-      </section>
-
-      <section className="space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="font-heading text-xl font-medium">
-            Каталог квестов
-            {cityName ? (
-              <span className="ml-2 text-base font-normal text-muted-foreground">
-                {cityName}
-              </span>
-            ) : null}
-          </h2>
-          {!catalogUnavailable ? (
-            <span className="text-xs text-muted-foreground">
-              {catalog.length}{" "}
-              {catalog.length === 1
-                ? "квест"
-                : catalog.length >= 2 && catalog.length <= 4
-                  ? "квеста"
-                  : "квестов"}
-            </span>
-          ) : null}
-        </div>
-        {catalogUnavailable ? (
-          <div className="rounded-xl border border-border/80 bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Каталог временно недоступен</p>
-            <p className="mt-2">
-              Мы уже работаем над этим. Попробуйте обновить страницу чуть позже.
-            </p>
-          </div>
-        ) : catalog.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Пока нет доступных квестов</p>
-            <p className="mt-2">Загляните позже — новые сценарии скоро появятся в каталоге.</p>
-          </div>
-        ) : (
-          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {catalog.map((quest) => (
-              <li key={quest.id}>
-                <QuestCatalogCard quest={quest} session={sessionInfo} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+    <main className="flex w-full flex-1 flex-col">
+      <div className="-mt-14">
+        <HomeHero>
+          {catalogUnavailable ? (
+            <div className="rounded-xl border border-blood/30 bg-black/55 p-10 text-center text-sm text-white/70 backdrop-blur-md">
+              <p className="font-medium text-white">Каталог временно недоступен</p>
+              <p className="mt-2">Попробуйте обновить страницу чуть позже.</p>
+            </div>
+          ) : catalog.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-blood/35 bg-black/45 p-10 text-center text-sm text-white/70 backdrop-blur-md">
+              <p className="font-medium text-white">Пока нет доступных квестов</p>
+              <p className="mt-2">Новые сценарии скоро появятся в каталоге.</p>
+            </div>
+          ) : (
+            <ul className="grid items-stretch gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+              {catalog.map((quest) => (
+                <li
+                  key={quest.id}
+                  className="min-w-0 h-full [filter:drop-shadow(0_0_34px_rgba(185,28,28,0.28))]"
+                >
+                  <QuestCatalogCard quest={quest} session={sessionInfo} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </HomeHero>
+      </div>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import type { ReactNode } from "react";
 
+import { BloodBrushDrips } from "@/components/blood-brush-drips";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { SignOutButton } from "@/components/sign-out-button";
 import { isStaff } from "@/lib/roles";
@@ -104,10 +105,10 @@ export function SiteNav({ session }: { session: { user: SessionUser } | null }) 
             href="/register"
             prefetch
             className={cn(
-              buttonVariants({ variant: "default", size: "sm" }),
-              "shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
+              "btn-blood-brush btn-blood-brush--register shrink-0"
             )}
           >
+            <BloodBrushDrips variant="register" />
             <NavLinkLabel>Регистрация</NavLinkLabel>
           </Link>
         </>

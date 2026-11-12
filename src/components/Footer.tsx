@@ -33,11 +33,11 @@ function VkIcon({ className }: { className?: string }) {
 
 export function Footer() {
   return (
-    <footer className="relative z-10 mt-auto border-t border-border/80 bg-background/40 backdrop-blur-md">
+    <footer className="relative z-10 mt-auto border-0 bg-black">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between md:gap-8">
           <div className="max-w-md space-y-3">
-            <p className="font-heading text-sm font-semibold tracking-tight text-foreground">
+            <p className="font-display text-lg uppercase tracking-wide text-white">
               {siteConfig.brandName}
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -93,8 +93,8 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                      "hover:border-[#24A1DE]/40 hover:text-[#24A1DE]",
+                      "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                      "hover:border-blood hover:text-white",
                     )}
                   >
                     <Send className="size-4 shrink-0" aria-hidden />
@@ -107,8 +107,8 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                      "hover:border-[#0077FF]/40 hover:text-[#0077FF]",
+                      "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
+                      "hover:border-blood hover:text-white",
                     )}
                   >
                     <VkIcon className="size-4 shrink-0" />

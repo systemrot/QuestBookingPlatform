@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 96" fill="none">
+  <!-- Ragged horizontal brush plate for hero red underlay -->
+  <path
+    fill="#fff"
+    d="M18 38
+       C28 22 46 18 62 24
+       C78 12 96 20 112 16
+       C130 8 148 22 166 14
+       C184 6 202 18 220 12
+       C238 4 256 20 274 10
+       C292 2 310 16 328 12
+       C346 6 362 18 378 14
+       C396 8 412 22 430 18
+       C442 16 452 28 458 36
+       L462 42
+       C456 48 448 58 436 62
+       C418 72 400 58 382 66
+       C364 74 346 60 328 68
+       C310 76 292 62 274 70
+       C256 78 238 64 220 72
+       C202 80 184 66 166 74
+       C148 82 130 68 112 76
+       C94 84 76 70 58 78
+       C42 84 28 72 20 64
+       C14 58 12 48 18 38 Z"
+  />
+  <!-- Extra dry-brush flecks on the ends -->
+  <path fill="#fff" opacity="0.9" d="M6 44h10v6H6z M4 50h8v3H4z M468 40h8v5h-8z M472 48h6v4h-6z" />
+</svg>

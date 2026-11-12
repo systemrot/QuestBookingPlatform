@@ -30,6 +30,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BookingCareProgress } from "@/components/booking-care-progress";
+import { BloodBrushDrips } from "@/components/blood-brush-drips";
+import { QuestCardProp } from "@/components/quest-card-prop";
 import { formatRub, formatRu } from "@/lib/locale";
 import {
   clearClientPendingHold,
@@ -44,6 +46,8 @@ export type QuestForCatalog = {
   description: string | null;
   image: string | null;
   price: string;
+  /** Decorative prop index from reference (0 key, 1 stain, 2 badge). */
+  propVariant?: 0 | 1 | 2;
 };
 
 type SessionInfo = {
@@ -55,6 +59,26 @@ type SessionInfo = {
 const QUEST_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80";
 
+/** Map legacy public cover paths to refreshed cinematic assets. */
+const COVER_ALIASES: Record<string, string> = {
+  "/Kluch.jpg": "/brand/covers/kluch-v3.jpg",
+  "/Dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/Povorot.jpg": "/brand/covers/povorot-v4.jpg",
+  "/kluch.jpg": "/brand/covers/kluch-v3.jpg",
+  "/dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/povorot.jpg": "/brand/covers/povorot-v4.jpg",
+  "/brand/covers/kluch.jpg": "/brand/covers/kluch-v3.jpg",
+  "/brand/covers/dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/brand/covers/povorot.jpg": "/brand/covers/povorot-v4.jpg",
+  "/brand/covers/dyshi-v3.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/brand/covers/povorot-v3.jpg": "/brand/covers/povorot-v4.jpg",
+};
+
+function resolveQuestImage(src: string | null | undefined) {
+  if (!src) return QUEST_IMAGE_FALLBACK;
+  return COVER_ALIASES[src] ?? src;
+}
+
 export function QuestCatalogCard({
   quest,
   session,
@@ -62,6 +86,7 @@ export function QuestCatalogCard({
   quest: QuestForCatalog;
   session: SessionInfo;
 }) {
+  const propVariant = quest.propVariant ?? 0;
   const bookableDays = React.useMemo(() => listBookableDays(), []);
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => listBookableDays()[0]);
@@ -69,7 +94,9 @@ export function QuestCatalogCard({
   const [loading, setLoading] = React.useState(false);
   const [pendingSlot, setPendingSlot] = React.useState<string | null>(null);
   const [descExpanded, setDescExpanded] = React.useState(false);
-  const [imageSrc, setImageSrc] = React.useState(quest.image ?? QUEST_IMAGE_FALLBACK);
+  const [imageSrc, setImageSrc] = React.useState(() =>
+    resolveQuestImage(quest.image)
+  );
 
   const description =
     quest.description?.trim() ||
@@ -77,7 +104,7 @@ export function QuestCatalogCard({
   const descriptionLong = description.length > 160;
 
   React.useEffect(() => {
-    setImageSrc(quest.image ?? QUEST_IMAGE_FALLBACK);
+    setImageSrc(resolveQuestImage(quest.image));
   }, [quest.image]);
 
   const loadSlots = React.useCallback(async () => {
@@ -158,51 +185,80 @@ export function QuestCatalogCard({
 
   return (
     <>
-      <Card className="gap-0 overflow-hidden border-border/60 bg-card/50 py-0 shadow-sm backdrop-blur-sm transition hover:border-primary/30 hover:shadow-md">
-        <button
-          type="button"
-          className="w-full cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          onClick={() => setOpen(true)}
-          aria-label={`Подробнее о квесте «${quest.title}»`}
-        >
-          <div className="relative aspect-[16/10] w-full bg-muted">
-            <Image
-              src={imageSrc}
-              alt=""
-              fill
-              className="object-cover transition duration-300 group-hover/card:scale-[1.02]"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              onError={() => {
-                if (imageSrc !== QUEST_IMAGE_FALLBACK) {
-                  setImageSrc(QUEST_IMAGE_FALLBACK);
-                }
-              }}
-            />
-            <Badge className="absolute right-3 top-3 bg-background/90 text-foreground backdrop-blur">
-              От {formatRub(quest.price)}
-            </Badge>
-          </div>
-          <CardHeader className="gap-1.5 px-4 pt-4 pb-4">
-            <CardTitle className="text-lg">{quest.title}</CardTitle>
-            {quest.description && (
-              <CardDescription className="line-clamp-2">{quest.description}</CardDescription>
-            )}
-          </CardHeader>
-        </button>
-        <CardFooter className="mt-auto border-t border-border/60 bg-transparent p-0">
-          <Button
-            className={cn(
-              "h-11 w-full rounded-none rounded-b-xl",
-              "bg-foreground/[0.12] font-medium tracking-wide text-foreground shadow-none",
-              "hover:bg-foreground/[0.2]",
-              "active:bg-foreground/[0.24]"
-            )}
-            onClick={() => setOpen(true)}
+      <div className="group/quest relative flex h-full flex-col pb-6 sm:pb-7">
+        <Card className="quest-card-horror group/card flex h-full flex-col gap-0 overflow-visible rounded-none bg-transparent py-0 ring-0">
+          <div
+            role="button"
+            tabIndex={0}
+            className="relative z-[1] flex w-full flex-1 flex-col cursor-pointer text-left outline-none focus-visible:ring-2 focus-visible:ring-blood/60 focus-visible:ring-inset"
+            onClick={(e) => {
+              (e.currentTarget as HTMLElement).blur();
+              setOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).blur();
+                setOpen(true);
+              }
+            }}
+            aria-label={`Подробнее о квесте «${quest.title}»`}
           >
-            Забронировать
-          </Button>
-        </CardFooter>
-      </Card>
+            <div className="quest-card-media relative aspect-[16/12] w-full shrink-0 overflow-hidden bg-[oklch(0.1_0.012_25)]">
+              <Image
+                src={imageSrc}
+                alt=""
+                fill
+                className="quest-card-media-img object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                onError={() => {
+                  if (imageSrc !== QUEST_IMAGE_FALLBACK) {
+                    setImageSrc(QUEST_IMAGE_FALLBACK);
+                  }
+                }}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0.012_25)] from-[18%] via-black/40 to-transparent" />
+              <div className="quest-card-media-wash pointer-events-none absolute inset-0" />
+              <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_48px_rgba(0,0,0,0.55)]" />
+              <Badge className="quest-price-badge absolute right-3 top-3 z-[6] text-[12px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
+                От {formatRub(quest.price)}
+              </Badge>
+            </div>
+            {/* -mt overlaps the media so card lift never opens a 1px seam */}
+            <CardHeader className="relative z-[2] -mt-5 flex flex-1 flex-col gap-2.5 bg-[oklch(0.1_0.012_25)] px-4 pb-1.5 pt-5">
+              <CardTitle className="quest-card-title min-h-[2.1em] text-[1.15rem] sm:text-[1.22rem]">
+                {quest.title}
+              </CardTitle>
+              <CardDescription className="quest-card-desc min-h-[3.9em] line-clamp-3 text-[12.5px] leading-snug text-white/68">
+                {quest.description || "\u00a0"}
+              </CardDescription>
+            </CardHeader>
+          </div>
+          <CardFooter className="relative z-[1] mt-auto flex items-center justify-start border-0 bg-transparent px-4 pb-5 pt-2 pr-16 sm:pr-20">
+            <Button
+              className="btn-blood-brush h-11 w-auto min-w-[10.75rem] justify-center px-5 text-sm"
+              onClick={(e) => {
+                e.currentTarget.blur();
+                setOpen(true);
+              }}
+            >
+              <BloodBrushDrips
+                variant={
+                  propVariant === 0 ? "a" : propVariant === 1 ? "b" : "c"
+                }
+              />
+              Забронировать
+              <span data-brush-arrow aria-hidden>
+                →
+              </span>
+            </Button>
+          </CardFooter>
+        </Card>
+        {/* Outside clip-path — larger, higher, overlaps the card corner */}
+        <div className="quest-card-prop-wrap pointer-events-none absolute bottom-1 -right-3 z-20 rotate-[8deg] sm:bottom-2 sm:-right-4 sm:rotate-[10deg]">
+          <QuestCardProp variant={propVariant} />
+        </div>
+      </div>
 
       <Dialog
         open={open}
@@ -237,7 +293,7 @@ export function QuestCatalogCard({
 
             <div className="relative z-[1] -mt-10 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-12 sm:px-5 sm:pb-5">
               <DialogHeader className="gap-2 text-left">
-                <DialogTitle className="pr-8 text-xl leading-snug drop-shadow-sm sm:text-2xl">
+                <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] drop-shadow-sm sm:text-2xl">
                   {quest.title}
                 </DialogTitle>
                 <DialogDescription

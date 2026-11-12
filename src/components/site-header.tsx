@@ -32,12 +32,12 @@ export async function SiteHeader() {
           suggestedName={suggested.name}
         />
       ) : null}
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-1.5 px-2 sm:gap-3 sm:px-6">
+      <header className="sticky top-0 z-40 overflow-visible border-b border-blood/25 bg-black/45 backdrop-blur-md">
+        <div className="mx-auto flex min-h-14 max-w-6xl items-center justify-between gap-1.5 overflow-visible px-2 py-2 sm:gap-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-1 sm:gap-3">
             <Link
               href="/"
-              className="shrink-0 font-heading text-sm font-semibold tracking-tight text-foreground"
+              className="shrink-0 font-display text-[1.05rem] uppercase tracking-[0.04em] text-white [text-shadow:0_0_18px_rgba(220,38,38,0.35)] sm:text-xl"
             >
               {siteConfig.brandName}
             </Link>
