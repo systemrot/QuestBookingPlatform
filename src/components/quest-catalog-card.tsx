@@ -62,15 +62,16 @@ const QUEST_IMAGE_FALLBACK =
 /** Map legacy public cover paths to refreshed cinematic assets. */
 const COVER_ALIASES: Record<string, string> = {
   "/Kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/Dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/Dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
   "/Povorot.jpg": "/brand/covers/povorot-v4.jpg",
   "/kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
   "/povorot.jpg": "/brand/covers/povorot-v4.jpg",
   "/brand/covers/kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/brand/covers/dyshi.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/brand/covers/dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
   "/brand/covers/povorot.jpg": "/brand/covers/povorot-v4.jpg",
-  "/brand/covers/dyshi-v3.jpg": "/brand/covers/dyshi-v4.jpg",
+  "/brand/covers/dyshi-v3.jpg": "/brand/covers/dyshi-v5.jpg",
+  "/brand/covers/dyshi-v4.jpg": "/brand/covers/dyshi-v5.jpg",
   "/brand/covers/povorot-v3.jpg": "/brand/covers/povorot-v4.jpg",
 };
 
@@ -217,26 +218,27 @@ export function QuestCatalogCard({
                   }
                 }}
               />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0.012_25)] from-[18%] via-black/40 to-transparent" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0.012_25)] from-[10%] via-black/35 via-[30%] to-transparent to-[55%]" />
               <div className="quest-card-media-wash pointer-events-none absolute inset-0" />
               <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_48px_rgba(0,0,0,0.55)]" />
-              <Badge className="quest-price-badge absolute right-3 top-3 z-[6] text-[12px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
-                От {formatRub(quest.price)}
-              </Badge>
             </div>
-            {/* -mt overlaps the media so card lift never opens a 1px seam */}
-            <CardHeader className="relative z-[2] -mt-5 flex flex-1 flex-col gap-2.5 bg-[oklch(0.1_0.012_25)] px-4 pb-1.5 pt-5">
-              <CardTitle className="quest-card-title min-h-[2.1em] text-[1.15rem] sm:text-[1.22rem]">
+            {/* Outside overflow:hidden media — brush stroke isn't sheared on the left */}
+            <span className="quest-price-badge">
+              От {formatRub(quest.price)}
+            </span>
+            {/* Stronger -mt pulls title into the media fade — less empty dark band */}
+            <CardHeader className="relative z-[2] -mt-10 flex flex-1 flex-col gap-2.5 bg-transparent px-4 pb-1.5 pt-2 sm:-mt-12">
+              <CardTitle className="quest-card-title min-h-[2.1em] text-[1.2rem] sm:text-[1.28rem]">
                 {quest.title}
               </CardTitle>
-              <CardDescription className="quest-card-desc min-h-[3.9em] line-clamp-3 text-[12.5px] leading-snug text-white/68">
+              <CardDescription className="quest-card-desc min-h-[3.9em] line-clamp-3 text-[14px] leading-snug text-white/72">
                 {quest.description || "\u00a0"}
               </CardDescription>
             </CardHeader>
           </div>
-          <CardFooter className="relative z-[1] mt-auto flex items-center justify-start border-0 bg-transparent px-4 pb-5 pt-2 pr-16 sm:pr-20">
+          <CardFooter className="relative z-[1] mt-auto flex items-center justify-start border-0 bg-[oklch(0.1_0.012_25)] px-4 pb-6 pt-2 pr-16 sm:pb-7 sm:pr-20">
             <Button
-              className="btn-blood-brush h-11 w-auto min-w-[10.75rem] justify-center px-5 text-sm"
+              className="btn-blood-brush h-auto min-h-11 w-auto min-w-[10.75rem] justify-center px-5 text-sm"
               onClick={(e) => {
                 e.currentTarget.blur();
                 setOpen(true);
@@ -255,7 +257,7 @@ export function QuestCatalogCard({
           </CardFooter>
         </Card>
         {/* Outside clip-path — larger, higher, overlaps the card corner */}
-        <div className="quest-card-prop-wrap pointer-events-none absolute bottom-1 -right-3 z-20 rotate-[8deg] sm:bottom-2 sm:-right-4 sm:rotate-[10deg]">
+        <div className="quest-card-prop-wrap pointer-events-none absolute -bottom-3 -right-3 z-20 rotate-[8deg] sm:-bottom-2 sm:-right-4 sm:rotate-[10deg]">
           <QuestCardProp variant={propVariant} />
         </div>
       </div>
@@ -276,22 +278,22 @@ export function QuestCatalogCard({
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             <div className="relative shrink-0">
-            <div className="relative h-40 w-full bg-muted sm:h-48">
+            <div className="relative aspect-[16/12] w-full bg-muted sm:aspect-[16/11] sm:min-h-[22rem]">
               <Image
                 src={imageSrc}
                 alt=""
                 fill
-                className="object-cover"
+                className="object-cover object-[center_18%] sm:object-[center_22%]"
                 sizes="(max-width: 768px) 100vw, 576px"
               />
               {/* Длинный градиент в цвет модалки — без резкой «полосы» на стыке */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-15% via-popover/85 via-45% to-transparent to-75%" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-10% via-popover/80 via-40% to-transparent to-72%" />
               <Badge className="absolute left-3 top-3 z-[1] bg-background/90 text-foreground backdrop-blur">
                 От {formatRub(quest.price)}
               </Badge>
             </div>
 
-            <div className="relative z-[1] -mt-10 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-12 sm:px-5 sm:pb-5">
+            <div className="relative z-[1] -mt-12 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-16 sm:px-5 sm:pb-5">
               <DialogHeader className="gap-2 text-left">
                 <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] drop-shadow-sm sm:text-2xl">
                   {quest.title}

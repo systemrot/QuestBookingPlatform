@@ -10,7 +10,8 @@
   --font-sans: var(--font-montserrat);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-rhythmic), var(--font-unutterable), var(--font-rubik-dirt), var(--font-montserrat), sans-serif;
-  --font-heading: var(--font-display);
+  /* UI headings (admin, cards, forms) — not the brush display face */
+  --font-heading: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --color-blood: var(--blood);
   --color-blood-hot: var(--blood-hot);
   --color-blood-glow: var(--blood-glow);
@@ -207,32 +208,140 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   display: none;
 }
 
+body:has([data-home-split-root]) > .relative.z-10,
+body:has([data-home-split-root]) > .relative.z-10 > .flex-1,
+body:has([data-home-split-root]) main {
+  display: block;
+  min-height: 0;
+  flex: none;
+  background: transparent;
+}
+
 /*
- * Split homepage (variant B):
- * left ~38–40% character+cabin, right content; knife may overlap footer.
+ * Split homepage — full-viewport scenic hero, footer scrolls below.
  */
 .home-split {
-  --home-split-left: minmax(17.5rem, 38%);
+  --home-split-left: 37%;
+  --home-knife-hang: 4rem;
+  --home-top-h: 3.35rem;
   position: relative;
-  display: grid;
-  grid-template-columns: var(--home-split-left) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "stage main"
-    "foot foot";
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  min-height: 100svh;
-  background: #000;
+  max-width: 100%;
+  background: #0a0707;
   overflow: visible;
 }
 
+.home-split-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--home-split-left) minmax(0, 1fr);
+  grid-template-rows: minmax(100svh, auto);
+  grid-template-areas: "stage main";
+  width: 100%;
+  min-height: 100svh;
+  overflow: visible;
+}
+
+.home-split-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Cabin + character share one plate — no scale (keeps background crisp) */
+.home-split-plate {
+  position: absolute;
+  inset: 0;
+  transform: none;
+}
+
+.home-split-cabin {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.home-split-cabin-img,
+.home-split-cabin img {
+  object-position: 18% 42%;
+  filter: saturate(0.92) contrast(1.04) brightness(0.97);
+}
+
+/* Kill red ground-haze around the character without adding more color */
+.home-split-cabin::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 48%;
+  height: 58%;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 70% at 28% 78%,
+    rgba(6, 5, 5, 0.55) 0%,
+    rgba(6, 5, 5, 0.22) 42%,
+    transparent 72%
+  );
+}
+
+.home-split-veil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+/* Scene mist stays barely there — readability veil lives under the hero copy */
+.home-split-veil--x {
+  z-index: 4;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 42%,
+    rgba(8, 5, 4, 0.06) 55%,
+    rgba(8, 5, 4, 0.08) 68%,
+    transparent 82%
+  );
+}
+
+.home-split-veil--y {
+  z-index: 5;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 4, 4, 0.42) 0%,
+    rgba(6, 4, 4, 0.12) 10%,
+    transparent 18%,
+    transparent 70%,
+    rgba(6, 4, 4, 0.14) 88%,
+    rgba(5, 3, 3, 0.32) 100%
+  );
+}
+
+.home-split-veil--glow {
+  z-index: 3;
+  /* Cool moonlight only — no blood haze on the character */
+  background: radial-gradient(
+    34% 30% at 17% 34%,
+    rgba(140, 160, 180, 0.06),
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.45;
+}
+
+/* Overlay header — sits on top of scene, no row height cost */
 .home-split-top {
   position: absolute;
   inset: 0 0 auto 0;
+  z-index: 40;
   display: grid;
   grid-template-columns: var(--home-split-left) minmax(0, 1fr);
   align-items: center;
-  z-index: 40;
+  min-height: var(--home-top-h);
   pointer-events: none;
 }
 
@@ -241,66 +350,134 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  min-height: 3.5rem;
+  min-height: var(--home-top-h);
   gap: 0.65rem;
-  padding: 0.55rem 1rem;
+  padding: 0.45rem 1.15rem;
 }
 
 .home-split-brand {
-  padding-left: 1.1rem;
+  padding-left: 1.35rem;
 }
 
 .home-split-nav {
   justify-content: flex-end;
-  padding-right: 1.25rem;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.55) 0%,
-    rgba(0, 0, 0, 0.18) 70%,
-    transparent 100%
-  );
+  padding-right: 1.5rem;
 }
 
 .home-split-stage {
   grid-area: stage;
   position: relative;
-  z-index: 20;
-  min-height: 28rem;
-  /* Allow knife to paint over the footer */
+  z-index: 1;
   overflow: visible;
+  pointer-events: none;
+  min-height: 0;
 }
 
-.home-split-stage-frame {
-  position: absolute;
-  /* Extend past the stage into the footer so the knife overlaps it */
-  inset: 0 0 -6.5rem 0;
-  overflow: visible;
-}
-
-.home-split-cabin {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
+/* Character is % of the full scenic plate — stays glued to the cabin */
 .home-split-character {
   position: absolute;
-  left: -6%;
-  right: -8%;
-  bottom: -2.5rem;
-  top: 4%;
+  left: -7%;
+  width: 58%;
+  /* Full hero height — no footer eating the frame */
+  top: 2%;
+  bottom: -2%;
   z-index: 2;
+  filter:
+    brightness(0.95) contrast(1.05) saturate(0.94)
+    drop-shadow(0 18px 34px rgba(0, 0, 0, 0.82));
 }
 
-.home-split-stage-veil {
+/* Kept for reduced-motion reset / legacy class — plate no longer scales */
+@keyframes scene-breathe {
+  0%,
+  100% {
+    transform: none;
+  }
+}
+
+.animate-scene-breathe {
+  animation: none;
+}
+
+/* Content darkening plate — under character; hard TR, feathered left */
+.home-split-content-veil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* Below character (z:2) so the left seam never cuts the figure */
+  z-index: 1;
+  width: min(84%, 80rem);
+  height: min(88%, 62rem);
   pointer-events: none;
+  /* Soft left only — keep the right side dense */
+  -webkit-mask-image:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.45) 10%,
+      #000 26%,
+      #000 100%
+    ),
+    linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.45) 10%,
+      #000 26%,
+      #000 100%
+    ),
+    linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Extra density over the PNG — readability for title + cards */
+.home-split-content-veil::after {
+  content: "";
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 2;
+  pointer-events: none;
   background:
-    linear-gradient(90deg, transparent 55%, rgba(0, 0, 0, 0.55) 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 22%),
-    linear-gradient(0deg, rgba(0, 0, 0, 0.55) 0%, transparent 28%);
+    radial-gradient(
+      95% 85% at 82% 16%,
+      rgba(0, 0, 0, 0.78) 0%,
+      rgba(0, 0, 0, 0.5) 38%,
+      transparent 72%
+    ),
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.28) 18%,
+      rgba(0, 0, 0, 0.55) 48%,
+      rgba(0, 0, 0, 0.82) 100%
+    );
+}
+
+.home-split-content-veil img {
+  z-index: 1;
+  opacity: 1;
+}
+
+/* Soft left haze — blends plate into the scene */
+.home-split-content-veil::before {
+  content: "";
+  position: absolute;
+  left: -10%;
+  top: 0;
+  z-index: 2;
+  width: 42%;
+  height: 88%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 40%,
+    rgba(0, 0, 0, 0.14) 72%,
+    transparent 100%
+  );
+  filter: blur(36px);
 }
 
 .home-split-main {
@@ -309,128 +486,772 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   z-index: 15;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  /* Top padding clears the absolute header */
-  padding: 4.25rem 1.25rem 1.5rem;
-  background:
-    radial-gradient(
-      90% 60% at 20% 0%,
-      color-mix(in oklch, var(--blood) 14%, transparent),
-      transparent 55%
-    ),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.92));
+  gap: 1.35rem;
+  min-height: 0;
+  /* Shift content left toward the character — close the empty gap */
+  margin-left: -3.75rem;
+  /* Align block with the character’s head, nudged slightly down */
+  padding: calc(var(--home-top-h) + 2.1rem) 1.15rem 1.25rem 0;
+  background: transparent;
+}
+
+.home-split-main > * {
+  position: relative;
+  z-index: 1;
 }
 
 .home-split-copy {
-  max-width: 46rem;
-  padding-top: 0.35rem;
+  position: relative;
+  max-width: min(52rem, 100%);
+  width: fit-content;
+  flex-shrink: 0;
+  isolation: isolate;
+}
+
+.home-split .hero-title {
+  font-size: clamp(1.7rem, 3vw, 3.25rem);
+  line-height: 0.94;
+}
+
+.home-split-hero-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.home-split-hero-title .hero-line--single {
+  padding-bottom: 0.02em;
+}
+
+.home-split-hero-title .hero-line--blood {
+  margin-top: -0.12em;
+  padding-top: 0.06em;
+}
+
+.home-split .hero-line--single {
+  white-space: nowrap;
 }
 
 .home-split-eyebrow {
-  margin-bottom: 0.7rem;
-  font-size: 0.72rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--blood-hot) 85%, white);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
-.home-split-lede {
-  margin-top: 0.85rem;
-  max-width: 36rem;
-  font-size: 0.92rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.62);
+.home-split-eyebrow-accent {
+  color: var(--blood-hot);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 0 14px rgba(220, 38, 38, 0.28);
+}
+
+.home-split-eyebrow-rest {
+  color: white;
+}
+
+.home-split-catalog {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-split-catalog-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: stretch;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.home-split-catalog-label {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0.28rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
+  border-radius: min(var(--radius-md, 0.5rem), 10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 12, 12, 0.55);
+  backdrop-filter: blur(6px);
+  box-sizing: border-box;
 }
 
 .home-split-footer {
-  grid-area: foot;
   position: relative;
-  z-index: 10;
+  z-index: 25;
+  flex-shrink: 0;
+  /* Below the scenic hero — not pinned in the first viewport */
+  margin-top: 0;
+}
+
+.home-split-footer-panel {
+  position: relative;
+  overflow: hidden;
+  border-top: 0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 180, 160, 0.04),
+    0 -18px 48px rgba(0, 0, 0, 0.55);
+  /* Slightly transparent so a hint of the scene can show through */
+  background-color: rgba(3, 2, 2, 0.88) !important;
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      transparent 0 9px,
+      rgba(255, 210, 190, 0.012) 9px 10px,
+      transparent 10px 20px
+    ),
+    linear-gradient(
+      180deg,
+      rgba(10, 8, 7, 0.94) 0%,
+      rgba(5, 4, 4, 0.9) 48%,
+      rgba(2, 1, 1, 0.92) 100%
+    ) !important;
+  backdrop-filter: blur(10px) saturate(0.85);
+  -webkit-backdrop-filter: blur(10px) saturate(0.85);
+}
+
+/* Grunge / film-grain texture over the footer plate — darker */
+.home-split-footer-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.82;
+  mix-blend-mode: multiply;
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n2'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.045' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n2)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.55));
+  background-size: 180px 180px, 380px 380px, auto;
+}
+
+.home-split-footer-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--blood) 45%, transparent) 18%,
+    color-mix(in oklch, var(--blood-hot) 70%, transparent) 42%,
+    color-mix(in oklch, var(--blood) 35%, transparent) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px color-mix(in oklch, var(--blood) 18%, transparent);
+  opacity: 0.75;
 }
 
 .home-split-footer-inner {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: var(--home-split-left) minmax(0, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: minmax(24rem, 44%) minmax(0, 1fr);
+  grid-template-areas:
+    "about cols"
+    "bar bar";
+  gap: 0.4rem 2.25rem;
   align-items: start;
-  padding-top: 1.75rem;
-  padding-bottom: 1.75rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.3rem;
 }
 
 .home-split-footer-about {
-  max-width: 22rem;
-  padding-right: 1rem;
-  /* Keep copy readable beside the overlapping knife */
+  grid-area: about;
+  max-width: 38rem;
+  padding-left: 0.2rem;
   position: relative;
-  z-index: 12;
+  z-index: 1;
+}
+
+.home-split-footer-brand {
+  text-shadow:
+    0 0 22px rgba(220, 38, 38, 0.35),
+    0 2px 16px rgba(0, 0, 0, 0.92);
+}
+
+.home-split-footer-brand::after {
+  content: "";
+  display: block;
+  width: 3.4rem;
+  height: 2.5px;
+  margin-top: 0.45rem;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--blood-hot) 95%, white),
+    color-mix(in oklch, var(--blood) 55%, transparent) 55%,
+    transparent
+  );
+  box-shadow: 0 0 12px color-mix(in oklch, var(--blood-hot) 40%, transparent);
+}
+
+.home-split-footer-cols {
+  grid-area: cols;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+
+.home-split-footer-col {
+  position: relative;
+  min-height: 100%;
+  padding-left: 1.05rem;
+}
+
+.home-split-footer-col::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  bottom: 0.15rem;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--blood-hot) 55%, transparent),
+    rgba(255, 255, 255, 0.08) 45%,
+    transparent
+  );
+}
+
+.home-split-footer-heading {
+  margin-bottom: 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blood-hot);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(220, 38, 38, 0.22);
+}
+
+.home-split-footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.home-split-footer-links a {
+  position: relative;
+  display: inline-block;
+  padding-left: 0.7rem;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.68);
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.home-split-footer-links a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--blood-hot) 70%, transparent);
+  box-shadow: 0 0 6px color-mix(in oklch, var(--blood) 40%, transparent);
+  opacity: 0.7;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.home-split-footer-links a:hover {
+  color: white;
+  transform: translateX(3px);
+}
+
+.home-split-footer-links a:hover::before {
+  opacity: 1;
+  transform: scale(1.25);
+}
+
+.home-split-footer-socials {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: 100%;
+}
+
+.home-split-footer-socials > li {
+  width: 100%;
+}
+
+.home-split-footer-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 0.45rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in oklch, var(--blood) 50%, transparent);
+  background:
+    linear-gradient(
+      165deg,
+      rgba(55, 22, 20, 0.92),
+      rgba(18, 10, 9, 0.95)
+    );
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 8px 20px rgba(0, 0, 0, 0.4);
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.home-split-footer-social:hover {
+  border-color: color-mix(in oklch, var(--blood-hot) 85%, white);
+  color: white;
+  transform: translateY(-1px);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklch, var(--blood) 48%, #1a0c0a),
+      #120808
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 22px color-mix(in oklch, var(--blood) 32%, transparent);
+}
+
+.home-split-footer-bar {
+  grid-area: bar;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+  margin-top: 0.1rem;
+  padding: 0.45rem 0.15rem 0;
+  border-top: 1px solid rgba(255, 180, 160, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02),
+    transparent 70%
+  );
+  font-size: 0.68rem;
+  letter-spacing: 0.045em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.home-split-footer-bar-copy {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.home-split-footer-bar-tag {
+  color: color-mix(in oklch, var(--blood-hot) 45%, white);
+  font-style: italic;
+}
+
+.home-split-footer-bar-sep {
+  color: color-mix(in oklch, var(--blood-hot) 60%, transparent);
+}
+
+.home-split #catalog > ul {
+  gap: 0.9rem !important;
+  align-items: stretch;
+}
+
+.home-split #catalog .quest-card-media {
+  aspect-ratio: 16 / 11;
+}
+
+.home-split #catalog .group\/quest {
+  padding-bottom: 1.25rem !important;
+}
+
+.home-split #catalog .quest-card-title {
+  font-size: 1.14rem;
+  min-height: 1.85em;
+}
+
+.home-split #catalog .quest-card-desc {
+  min-height: 3.2em;
+  font-size: 13.5px;
+}
+
+.home-split #catalog .quest-card-prop-wrap {
+  bottom: -0.95rem !important;
 }
 
 @media (max-width: 1023px) {
-  .home-split {
+  .home-split-hero {
     --home-split-left: 100%;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    --home-knife-hang: 0rem;
+    /*
+     * Zoom/pixels came from sizing the PHOTO to the whole tall page —
+     * object-cover then cropped to one tree + moon. Keep the cabin image
+     * in a landscape band; dark scene fills the rest behind cards.
+     */
+    --home-mobile-art-h: clamp(24rem, 68svh, 36rem);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas:
-      "top"
       "stage"
-      "main"
-      "foot";
-    overflow: hidden;
+      "main";
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible;
+    /* Spacer for fixed header */
+    padding-top: calc(var(--home-top-h) + env(safe-area-inset-top, 0px));
   }
 
   .home-split-top {
-    position: relative;
-    inset: auto;
-    grid-area: top;
-    grid-template-columns: 1fr;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: calc(var(--home-top-h) + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(8, 5, 5, 0.92);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .home-split-brand {
-    justify-content: space-between;
-    background: rgba(0, 0, 0, 0.72);
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.45rem 0.25rem 0.45rem 1rem;
   }
 
   .home-split-nav {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    padding-top: 0;
-    background: rgba(0, 0, 0, 0.72);
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0.25rem 0.55rem 0.25rem 0;
+  }
+
+  .home-split-scene {
+    inset: 0;
+    height: auto;
+    background: #0a0707;
+  }
+
+  .home-split-cabin {
+    inset: 0 0 auto 0;
+    height: var(--home-mobile-art-h);
+    overflow: visible;
+  }
+
+  .home-split-cabin-img,
+  .home-split-cabin img {
+    /* Pin the left edge of the plate to the frame — house stays in view */
+    object-position: left 32%;
+    transform: scale(1.12);
+    transform-origin: left 36%;
   }
 
   .home-split-stage {
-    min-height: 22rem;
-    max-height: 48svh;
-  }
-
-  .home-split-stage-frame {
-    inset: 0;
+    grid-area: stage;
+    /* Shorter lead-in so title sits higher on the art */
+    height: calc(var(--home-mobile-art-h) * 0.58);
+    min-height: calc(var(--home-mobile-art-h) * 0.58);
+    max-height: none;
+    min-width: 0;
+    width: 100%;
   }
 
   .home-split-character {
-    left: 5%;
-    right: 5%;
-    bottom: -1rem;
-    top: 0;
+    left: 50%;
+    /* Slightly less wide; nudged up 50px */
+    width: 112%;
+    top: calc(4% - 35px);
+    bottom: auto;
+    height: calc(var(--home-mobile-art-h) * 0.96);
+    transform: translateX(-50%);
+    filter:
+      brightness(0.96) contrast(1.06) saturate(0.95)
+      drop-shadow(0 18px 32px rgba(0, 0, 0, 0.85));
+  }
+
+  .home-split-character img {
+    object-fit: contain;
+    object-position: center top;
+  }
+
+  .home-split-veil--y {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 4, 0.18) 0%,
+      transparent 12%,
+      transparent 48%,
+      rgba(6, 4, 4, 0.28) 72%,
+      rgba(6, 4, 4, 0.55) 100%
+    );
+  }
+
+  .home-split-veil--x {
+    display: none;
+  }
+
+  .home-split-content-veil {
+    display: none;
+  }
+
+  .home-split-cabin::after {
+    display: block;
+    left: -8%;
+    right: -8%;
+    bottom: -3.5rem;
+    width: auto;
+    height: 62%;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(10, 7, 7, 0.25) 35%,
+      rgba(10, 7, 7, 0.55) 58%,
+      rgba(10, 7, 7, 0.82) 78%,
+      rgba(10, 7, 7, 0.92) 100%
+    );
+    filter: blur(18px);
   }
 
   .home-split-main {
-    padding: 1rem 1rem 1.5rem;
+    grid-area: main;
+    margin-left: 0;
+    /* Keep title below the face — only overlap the lower art / fade */
+    margin-top: calc(-5.5rem + 30px);
+    padding: 0 1rem 1.75rem;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    background: transparent;
+    overflow-x: clip;
+    gap: 0.55rem;
+  }
+
+  .home-split-copy {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+    isolation: isolate;
+    text-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.95),
+      0 2px 10px rgba(0, 0, 0, 0.9),
+      0 0 24px rgba(0, 0, 0, 0.65);
+  }
+
+  /* Soft dark halo behind the letters — not a hard plate */
+  .home-split-copy::before {
+    content: "";
+    position: absolute;
+    inset: -1.1rem -1.35rem -1.25rem;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 100% 95% at 50% 52%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 1) 18%,
+      rgba(0, 0, 0, 0.9) 34%,
+      rgba(0, 0, 0, 0.55) 55%,
+      rgba(0, 0, 0, 0.18) 74%,
+      transparent 92%
+    );
+    filter: blur(10px);
+  }
+
+  .home-split-eyebrow {
+    width: 100%;
+    text-align: center;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.95),
+      0 0 14px rgba(0, 0, 0, 0.7);
+  }
+
+  .home-split-catalog {
+    position: relative;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+  }
+
+  /*
+   * Black fade sits below the title (not over it) and softens into
+   * the first quest card.
+   */
+  .home-split-copy::after {
+    content: "";
+    position: absolute;
+    left: -1rem;
+    right: -1rem;
+    top: calc(100% - 1.25rem);
+    height: 8.5rem;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.35) 22%,
+      rgba(0, 0, 0, 0.55) 48%,
+      rgba(0, 0, 0, 0.28) 78%,
+      transparent 100%
+    );
+    filter: blur(12px);
+  }
+
+  .home-split-catalog-bar {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .home-split .hero-line--single {
+    white-space: normal;
+  }
+
+  .home-split .hero-title {
+    width: 100%;
+    text-align: center;
+    line-height: 1.02;
+    /* +2pt vs previous clamp */
+    font-size: clamp(1.675rem, 8vw, 2.325rem);
+  }
+
+  .home-split-hero-title {
+    width: 100%;
+    align-items: center;
+  }
+
+  .home-split .hero-line--light,
+  .home-split-hero-title .hero-line--single {
+    color: #fff;
+    font-size: calc(1em + 3pt);
+  }
+
+  .home-split-hero-title .hero-line--blood {
+    margin-top: calc(-0.12em + 15px);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.75));
+  }
+
+  .home-split #catalog > ul {
+    grid-template-columns: 1fr;
   }
 
   .home-split-footer-inner {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "about"
+      "cols"
+      "bar";
+    gap: 1rem;
+    padding-top: 1.1rem;
+  }
+
+  .home-split-footer-about {
+    padding-left: 0;
+    max-width: none;
+  }
+
+  .home-split-footer-cols {
+    grid-template-columns: 1fr;
+    gap: 0.95rem;
+  }
+
+  .home-split-footer-col {
+    padding-left: 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(255, 180, 160, 0.1);
+  }
+
+  .home-split-footer-col::before {
+    display: none;
+  }
+
+  .home-split-footer-socials {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: none;
+  }
+
+  .home-split-footer-socials > li {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .home-split-footer-bar {
+    justify-content: flex-start;
   }
 }
 
 @media (min-width: 1280px) {
   .home-split {
-    --home-split-left: minmax(20rem, 40%);
+    --home-split-left: 37%;
+    --home-knife-hang: 4.25rem;
+  }
+
+  .home-split-hero {
+    --home-split-left: 37%;
   }
 
   .home-split-main {
-    padding-right: 1.75rem;
-    gap: 2rem;
+    margin-left: -4.25rem;
+    padding-top: calc(var(--home-top-h) + 2.35rem);
+    padding-right: 1.4rem;
+    padding-bottom: 0.6rem;
+    padding-left: 0;
+    gap: 1.45rem;
+  }
+
+  .home-split-character {
+    left: -7%;
+    width: 58%;
+    top: 1%;
+    bottom: -4%;
+  }
+}
+
+@media (min-width: 1536px) {
+  .home-split {
+    --home-split-left: 36%;
+    --home-knife-hang: 4.5rem;
+  }
+
+  .home-split-main {
+    margin-left: -4.75rem;
+  }
+
+  .home-split .hero-title {
+    font-size: clamp(1.9rem, 3.15vw, 3.55rem);
   }
 }
 
@@ -518,22 +1339,26 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
 
 .btn-blood-brush {
   --brush-mask: url("/brand/ui/mask-book.png");
-  --brush-inset: -18% -10%;
+  /* Less left overflow — avoids hard cut / left mask defect */
+  --brush-inset: -16% -9% -20% -5%;
   --brush-glow: 0 0 0 transparent;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  min-height: 2.85rem;
-  padding: 0.7rem 1.7rem 0.75rem 1.45rem;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  gap: 0.55rem !important;
+  height: auto !important;
+  min-height: 2.75rem !important;
+  /* Nudge label slightly down into the brush plate */
+  padding: 0.42rem 1.65rem 0.74rem 1.4rem !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   color: white;
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  line-height: 1 !important;
   text-transform: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   isolation: isolate;
@@ -557,12 +1382,13 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   );
   -webkit-mask-image: var(--brush-mask);
   mask-image: var(--brush-mask);
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+  /* Crop noisy left edge of the mask asset */
+  -webkit-mask-size: 112% 108%;
+  mask-size: 112% 108%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  -webkit-mask-position: 10% 42%;
+  mask-position: 10% 42%;
   box-shadow: var(--brush-glow);
   transition:
     background 280ms ease,
@@ -574,21 +1400,21 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
 .btn-blood-brush--catalog {
   --brush-mask: url("/brand/ui/mask-catalog-v2.png");
   --brush-inset: -16% -6% -14% -7%;
-  min-height: 2.85rem;
-  padding: 0.55rem 1.55rem 0.58rem;
+  min-height: 2.85rem !important;
+  padding: 0.55rem 1.55rem 0.58rem !important;
   font-size: 0.95rem;
   letter-spacing: 0.02em;
-  line-height: 1;
+  line-height: 1 !important;
 }
 
 .btn-blood-brush--register {
   --brush-mask: url("/brand/ui/mask-register-v3.png");
   --brush-inset: -16% -5% -14% -6%;
-  min-height: 2.25rem;
-  padding: 0.4rem 1.2rem 0.38rem;
+  min-height: 2.25rem !important;
+  padding: 0.4rem 1.2rem 0.38rem !important;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
-  line-height: 1;
+  line-height: 1 !important;
 }
 
 .btn-blood-brush--masked {
@@ -970,7 +1796,8 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   align-items: center;
   justify-content: center;
   min-height: 2.35rem;
-  padding: 0.4rem 1.15rem;
+  /* Stroke asset is heavier on the right/bottom — optical center nudge */
+  padding: 0.26rem 1.28rem 0.54rem 1rem;
   border: none;
   border-radius: 0;
   background-color: transparent;
@@ -982,6 +1809,7 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+  line-height: 1;
   text-transform: uppercase;
   box-shadow: none;
   transition:
@@ -1020,13 +1848,12 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
     border-color 320ms ease,
     box-shadow 380ms ease;
   box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--blood) 45%, transparent),
-    0 -4px 26px color-mix(in oklch, var(--blood) 26%, transparent),
-    0 22px 48px oklch(0 0 0 / 0.72),
-    inset 0 0 0 0 transparent;
+    0 0 0 1px color-mix(in oklch, var(--blood) 35%, transparent),
+    0 18px 40px oklch(0 0 0 / 0.72);
   clip-path: polygon(
-    1% 1.5%,
-    4% 0.4%,
+    /* Softer top-left — leaves room for price brush without a sheared lump */
+    0.15% 0.55%,
+    3.2% 0.25%,
     96.5% 0%,
     /* Top-right only: hug the outer corner so the 2px border stays continuous */
     98.2% 0%,
@@ -1039,7 +1866,7 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
     96.5% 100%,
     2.5% 99.2%,
     0% 96.5%,
-    0.5% 3%
+    0.2% 2.2%
   );
 }
 
@@ -1048,11 +1875,8 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   transform: translate3d(0, -6px, 0) scale(1.018);
   border-color: color-mix(in oklch, var(--blood-hot) 92%, white 8%);
   box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--blood-hot) 55%, transparent),
-    0 -6px 34px color-mix(in oklch, var(--blood) 42%, transparent),
-    0 0 42px color-mix(in oklch, var(--blood-hot) 28%, transparent),
-    0 28px 56px oklch(0 0 0 / 0.78),
-    inset 0 0 28px color-mix(in oklch, var(--blood) 18%, transparent);
+    0 0 0 1px color-mix(in oklch, var(--blood-hot) 45%, transparent),
+    0 24px 48px oklch(0 0 0 / 0.78);
 }
 
 /* Soft blood stains — CSS only, no image crops */
@@ -1186,40 +2010,63 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
 }
 
 .quest-price-badge {
-  position: relative;
+  /* Inset from card clip-path notch (top-left polygon) */
+  left: 1.05rem;
+  top: 0.9rem;
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   isolation: isolate;
+  overflow: visible;
+  height: auto;
+  width: fit-content;
+  min-height: 0;
+  padding: 0.12rem 0.78rem 0.2rem 0.7rem;
   border: none;
   border-radius: 0;
-  padding: 0.48rem 1rem 0.52rem;
   background: transparent;
   box-shadow: none;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.65),
+    0 0 8px rgba(220, 38, 38, 0.2);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 
-.group\/quest:hover .quest-price-badge {
-  transform: translate3d(0, -1px, 0) scale(1.04);
-}
-
+/* Blood brush plate — same mask language as book CTA */
 .quest-price-badge::before {
   content: "";
   position: absolute;
-  inset: -22% -12%;
+  /* Compact stroke; tiny left overflow for card clip-path */
+  inset: -28% -14% -34% -3%;
   z-index: -1;
+  pointer-events: none;
   background: linear-gradient(
-    180deg,
-    color-mix(in oklch, var(--blood-hot) 90%, white),
-    var(--blood)
+    165deg,
+    color-mix(in oklch, var(--blood-hot) 88%, white) 0%,
+    var(--blood) 42%,
+    color-mix(in oklch, var(--blood) 72%, black) 100%
   );
-  -webkit-mask-image: url("/brand/ui/mask-price.png");
-  mask-image: url("/brand/ui/mask-price.png");
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+  -webkit-mask-image: url("/brand/ui/mask-book.png");
+  mask-image: url("/brand/ui/mask-book.png");
+  -webkit-mask-size: 118% 130%;
+  mask-size: 118% 130%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  -webkit-mask-position: 12% 42%;
+  mask-position: 12% 42%;
+}
+
+.quest-price-badge::after {
+  content: none;
 }
 
 .quest-card-prop {
@@ -1230,6 +2077,7 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
 @media (prefers-reduced-motion: reduce) {
   .animate-hero-drift,
   .animate-character-breathe,
+  .animate-scene-breathe,
   .animate-fog {
     animation: none;
   }
@@ -1245,10 +2093,6 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   .quest-card-media-img,
   .quest-card-media-wash,
   .quest-card-prop-wrap,
-  .quest-price-badge {
-    transition: none;
-  }
-
   .btn-blood-brush:hover,
   .btn-blood-brush:hover::before,
   .btn-blood-outline:hover,
@@ -1257,8 +2101,7 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   .group\/quest:hover .quest-card-horror,
   .group\/quest:hover .quest-card-horror::before,
   .group\/quest:hover .quest-card-media-img,
-  .group\/quest:hover .quest-card-prop-wrap,
-  .group\/quest:hover .quest-price-badge {
+  .group\/quest:hover .quest-card-prop-wrap {
     transform: none;
     animation: none;
   }

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Hides the global site chrome while the split homepage owns header/footer. */
+/** Marks the homepage so global chrome can hide via CSS :has / body dataset. */
 export function MarkHomeSplit() {
   useEffect(() => {
     document.body.dataset.homeSplit = "1";

@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 const footerNav = [
   { href: "/", label: "Главная" },
   { href: "/about", label: "О нас" },
-  { href: "/login", label: "Войти" },
-  { href: "/register", label: "Регистрация" },
   { href: "/bookings", label: "Мои бронирования" },
 ] as const;
 
@@ -35,8 +33,10 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
   return (
     <footer
       className={cn(
-        "relative mt-auto border-0 bg-black",
-        embedded ? "z-[5] border-t border-blood/55" : "z-10"
+        "relative mt-auto border-0",
+        embedded
+          ? "home-split-footer-panel border-t border-blood/55"
+          : "z-10 bg-black"
       )}
     >
       <div
@@ -48,65 +48,47 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
       >
         {embedded ? (
           <>
-            <div className="home-split-footer-about space-y-3">
-              <p className="font-display text-lg uppercase tracking-wide text-white">
+            <div className="home-split-footer-about">
+              <p className="home-split-footer-brand font-display text-[1.4rem] uppercase tracking-[0.06em] text-white">
                 {siteConfig.brandName}
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="home-split-footer-lead mt-2.5 text-[13px] leading-relaxed text-white/62">
                 {siteConfig.footerAbout}
               </p>
             </div>
-            <div className="flex flex-col gap-8 sm:flex-row sm:flex-wrap sm:gap-10 md:gap-14">
-              <nav aria-label="Навигация в подвале" className="shrink-0">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Навигация
-                </p>
-                <ul className="flex flex-col gap-2 text-sm">
+
+            <div className="home-split-footer-cols">
+              <nav aria-label="Навигация в подвале" className="home-split-footer-col">
+                <p className="home-split-footer-heading">Навигация</p>
+                <ul className="home-split-footer-links">
                   {footerNav.map((item) => (
                     <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {item.label}
-                      </Link>
+                      <Link href={item.href}>{item.label}</Link>
                     </li>
                   ))}
                 </ul>
               </nav>
 
-              <nav aria-label="Документы" className="shrink-0">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Документы
-                </p>
-                <ul className="flex flex-col gap-2 text-sm">
+              <nav aria-label="Документы" className="home-split-footer-col">
+                <p className="home-split-footer-heading">Документы</p>
+                <ul className="home-split-footer-links">
                   {footerLegal.map((item) => (
                     <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {item.label}
-                      </Link>
+                      <Link href={item.href}>{item.label}</Link>
                     </li>
                   ))}
                 </ul>
               </nav>
 
-              <div className="shrink-0">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Связаться с нами
-                </p>
-                <ul className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="home-split-footer-col home-split-footer-contact">
+                <p className="home-split-footer-heading">Связаться с нами</p>
+                <ul className="home-split-footer-socials">
                   <li>
                     <a
                       href={siteConfig.social.telegram}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                        "hover:border-blood hover:text-white"
-                      )}
+                      className="home-split-footer-social"
                     >
                       <Send className="size-4 shrink-0" aria-hidden />
                       Telegram
@@ -117,10 +99,7 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                       href={siteConfig.social.vk}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full border border-blood/40 bg-card/30 px-3 py-2 text-sm text-muted-foreground transition-colors",
-                        "hover:border-blood hover:text-white"
-                      )}
+                      className="home-split-footer-social"
                     >
                       <VkIcon className="size-4 shrink-0" />
                       ВКонтакте
@@ -128,6 +107,19 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                   </li>
                 </ul>
               </div>
+            </div>
+
+            <div className="home-split-footer-bar">
+              <span className="home-split-footer-bar-copy">
+                © {new Date().getFullYear()} {siteConfig.brandName}. Все права
+                защищены.
+              </span>
+              <span className="home-split-footer-bar-sep" aria-hidden>
+                ·
+              </span>
+              <span className="home-split-footer-bar-tag">
+                Квесты рядом. Эмоции — навсегда.
+              </span>
             </div>
           </>
         ) : (
