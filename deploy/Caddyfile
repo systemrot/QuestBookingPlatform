@@ -1,5 +1,10 @@
 {$SITE_DOMAIN} {
 	encode zstd gzip
+
+	# Share/OG assets — long cache so VK/Telegram bots fetch reliably
+	@shareAssets path /brand/og-share.jpg /favicon.png /apple-touch-icon.png /brand/nekvest-icon-512.png
+	header @shareAssets Cache-Control "public, max-age=604800, immutable"
+
 	reverse_proxy app:3000
 }
 

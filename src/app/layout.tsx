@@ -79,7 +79,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ru_RU",
-    url: siteUrl,
+    url: `${siteUrl}/`,
     siteName: siteConfig.brandName,
     title: `${siteConfig.brandName} — бронирование квестов`,
     description:
@@ -90,6 +90,8 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: `${siteConfig.brandName} — бронирование квестов`,
+        type: "image/jpeg",
+        secureUrl: `${siteUrl}/brand/og-share.jpg`,
       },
     ],
   },
@@ -98,7 +100,11 @@ export const metadata: Metadata = {
     title: `${siteConfig.brandName} — бронирование квестов`,
     description:
       "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
-    images: ["/brand/og-share.jpg"],
+    images: [`${siteUrl}/brand/og-share.jpg`],
+  },
+  // VK reads og:* and optionally vk:image for link snippets.
+  other: {
+    "vk:image": `${siteUrl}/brand/og-share.jpg`,
   },
   robots: {
     index: true,
