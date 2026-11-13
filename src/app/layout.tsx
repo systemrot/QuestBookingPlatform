@@ -62,6 +62,17 @@ export const metadata: Metadata = {
   description:
     "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
   applicationName: siteConfig.brandName,
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0707" },
+    { media: "(prefers-color-scheme: light)", color: "#0a0707" },
+  ],
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/brand/nekvest-icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   alternates: {
     canonical: "/",
   },
@@ -75,10 +86,10 @@ export const metadata: Metadata = {
       "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
     images: [
       {
-        url: "/brand/hero-cabin.jpg",
-        width: 1920,
-        height: 1080,
-        alt: siteConfig.brandName,
+        url: "/brand/og-share.jpg",
+        width: 1200,
+        height: 630,
+        alt: `${siteConfig.brandName} — бронирование квестов`,
       },
     ],
   },
@@ -87,7 +98,7 @@ export const metadata: Metadata = {
     title: `${siteConfig.brandName} — бронирование квестов`,
     description:
       "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
-    images: ["/brand/hero-cabin.jpg"],
+    images: ["/brand/og-share.jpg"],
   },
   robots: {
     index: true,
