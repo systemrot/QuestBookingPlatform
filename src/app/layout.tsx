@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 
 import { auth } from "@/auth";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { DetectTelegramBrowser } from "@/components/detect-telegram-browser";
 import { Footer } from "@/components/Footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteUrl, siteConfig } from "@/config/site";
@@ -112,6 +113,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-black text-foreground">
+        <DetectTelegramBrowser />
         <div className="site-chrome-header">
           <SiteHeader />
         </div>

@@ -208,6 +208,28 @@ body:has([data-home-split-root]) .site-chrome-footer-slot {
   display: none;
 }
 
+/*
+ * Telegram in-app browser (esp. iOS): its native URL bar already occupies the
+ * top chrome. Keep our header in normal/absolute flow so it scrolls away
+ * instead of stacking a second fixed bar under Telegram’s.
+ */
+html[data-tg-browser] .site-chrome-header header {
+  position: static;
+  top: auto;
+}
+
+@media (max-width: 1023px) {
+  html[data-tg-browser] .home-split-hero {
+    padding-top: 0;
+  }
+
+  html[data-tg-browser] .home-split-top {
+    position: absolute;
+    min-height: var(--home-top-h);
+    padding-top: 0;
+  }
+}
+
 body:has([data-home-split-root]) > .relative.z-10,
 body:has([data-home-split-root]) > .relative.z-10 > .flex-1,
 body:has([data-home-split-root]) main {

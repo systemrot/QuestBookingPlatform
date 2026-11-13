@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import * as React from "react";
 import type { ReactNode } from "react";
 
 import { BloodBrushDrips } from "@/components/blood-brush-drips";
+import { MobileTopSheet } from "@/components/mobile-top-sheet";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { SignOutButton } from "@/components/sign-out-button";
 import { isStaff } from "@/lib/roles";
@@ -17,6 +18,35 @@ type SessionUser = {
   name?: string | null;
   email?: string | null;
 };
+
+function getUserInitials(name?: string | null, email?: string | null): string {
+  const n = name?.trim();
+  if (n) {
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toLocaleUpperCase("ru-RU");
+    }
+    return parts[0]!.slice(0, 2).toLocaleUpperCase("ru-RU");
+  }
+  const local = email?.trim().split("@")[0];
+  if (local) return local.slice(0, 1).toLocaleUpperCase("ru-RU");
+  return "?";
+}
+
+/** Stable muted accent for the avatar disc. */
+function avatarTone(seed: string): string {
+  const tones = [
+    "bg-[#5c1a1a] text-white",
+    "bg-[#3d2424] text-white",
+    "bg-[#4a1f2e] text-white",
+    "bg-[#2a2a2a] text-white",
+    "bg-[#1f3a2f] text-white",
+    "bg-[#2c2a4a] text-white",
+  ] as const;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return tones[Math.abs(h) % tones.length]!;
+}
 
 function NavLink({
   href,
@@ -77,28 +107,21 @@ function NavLinkLabel({
   );
 }
 
-/** Guest auth: desktop inline, mobile hamburger top-right. */
+const menuToggleClass = cn(
+  "inline-flex size-14 shrink-0 items-center justify-center rounded-md",
+  "text-white/90 transition-colors hover:bg-white/10 hover:text-white",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60"
+);
+
+const sheetItemClass = cn(
+  buttonVariants({ variant: "ghost", size: "sm" }),
+  "h-12 w-full justify-start px-3 text-base font-medium text-white hover:bg-white/10 hover:text-white"
+);
+
+/** Guest auth: desktop inline, mobile top sheet. */
 function GuestNav() {
   const [open, setOpen] = React.useState(false);
-  const rootRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    const onPointer = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
-    };
-  }, [open]);
+  const close = () => setOpen(false);
 
   return (
     <>
@@ -116,60 +139,122 @@ function GuestNav() {
         </Link>
       </div>
 
-      <div ref={rootRef} className="relative lg:hidden">
+      <div className="lg:hidden">
         <button
           type="button"
-          aria-label={open ? "Закрыть меню" : "Открыть меню"}
+          aria-label="Открыть меню"
           aria-expanded={open}
-          aria-controls="guest-auth-menu"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(true)}
+          className={menuToggleClass}
+        >
+          <Menu className="size-7" aria-hidden />
+        </button>
+
+        <MobileTopSheet
+          open={open}
+          onOpenChange={setOpen}
+          title="Меню"
+          description="Вход и регистрация"
+        >
+          <Link
+            href="/login"
+            prefetch
+            onClick={close}
+            className={sheetItemClass}
+          >
+            Войти
+          </Link>
+          <Link
+            href="/register"
+            prefetch
+            onClick={close}
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "h-12 w-full justify-center rounded-lg px-3 text-base font-semibold"
+            )}
+          >
+            Регистрация
+          </Link>
+        </MobileTopSheet>
+      </div>
+    </>
+  );
+}
+
+/** Signed-in auth: desktop inline, mobile avatar → top sheet. */
+function AuthNav({ user }: { user: SessionUser }) {
+  const [open, setOpen] = React.useState(false);
+  const close = () => setOpen(false);
+  const initials = getUserInitials(user.name, user.email);
+  const tone = avatarTone(user.email || user.name || initials);
+  const labelName = user.name?.trim() || user.email || "аккаунт";
+
+  return (
+    <>
+      <div className="hidden items-center gap-2 lg:flex">
+        {user.role === "USER" && (
+          <>
+            <NavLink href="/bookings">Мои бронирования</NavLink>
+            <NavLink href="/profile">Профиль</NavLink>
+          </>
+        )}
+        {isStaff(user.role) && <NavLink href="/admin">Админка</NavLink>}
+        <span className="hidden max-w-[10rem] truncate text-xs text-muted-foreground xl:inline">
+          {user.name ?? user.email}
+        </span>
+        <SignOutButton />
+      </div>
+
+      <div className="lg:hidden">
+        <button
+          type="button"
+          aria-label={`Меню аккаунта — ${labelName}`}
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
           className={cn(
-            "inline-flex size-10 shrink-0 items-center justify-center rounded-md",
-            "text-white/90 transition-colors hover:bg-white/10 hover:text-white",
+            "inline-flex size-11 shrink-0 items-center justify-center rounded-full",
+            "transition-opacity hover:opacity-90",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60"
           )}
         >
-          {open ? <X className="size-5" aria-hidden /> : <Menu className="size-5" aria-hidden />}
+          <span
+            className={cn(
+              "inline-flex size-8 items-center justify-center rounded-full",
+              "ring-1 ring-white/20 text-[0.65rem] font-semibold tracking-wide",
+              tone
+            )}
+            aria-hidden
+          >
+            {initials}
+          </span>
         </button>
 
-        {open ? (
-          <div
-            id="guest-auth-menu"
-            role="menu"
-            className={cn(
-              "absolute right-0 top-[calc(100%+0.4rem)] z-50 w-[min(13.5rem,calc(100vw-1.5rem))]",
-              "rounded-xl border border-white/12 bg-black/94 p-2 shadow-[0_18px_40px_rgba(0,0,0,0.65)]",
-              "backdrop-blur-md"
-            )}
-          >
-            <div className="flex flex-col gap-1">
-              <Link
-                href="/login"
-                prefetch
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "h-10 w-full justify-center px-3 text-sm font-medium"
-                )}
-              >
-                Войти
+        <MobileTopSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={labelName}
+          description="Бронирования, профиль и выход"
+        >
+          {user.role === "USER" && (
+            <>
+              <Link href="/bookings" onClick={close} className={sheetItemClass}>
+                Мои бронирования
               </Link>
-              <Link
-                href="/register"
-                prefetch
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  buttonVariants({ variant: "default", size: "sm" }),
-                  "h-10 w-full justify-center rounded-lg px-3 text-sm font-semibold"
-                )}
-              >
-                Регистрация
+              <Link href="/profile" onClick={close} className={sheetItemClass}>
+                Профиль
               </Link>
-            </div>
-          </div>
-        ) : null}
+            </>
+          )}
+          {isStaff(user.role) && (
+            <Link href="/admin" onClick={close} className={sheetItemClass}>
+              Админка
+            </Link>
+          )}
+          <SignOutButton
+            outline={false}
+            className="h-12 w-full justify-start px-3 text-base font-medium text-white hover:bg-white/10 hover:text-white"
+          />
+        </MobileTopSheet>
       </div>
     </>
   );
@@ -178,31 +263,7 @@ function GuestNav() {
 export function SiteNav({ session }: { session: { user: SessionUser } | null }) {
   return (
     <nav className="flex shrink-0 items-center gap-0.5 sm:gap-2">
-      {session?.user ? (
-        <>
-          {session.user.role === "USER" && (
-            <>
-              <NavLink href="/bookings" short="Брони">
-                Мои бронирования
-              </NavLink>
-              <NavLink href="/profile" short="Профиль">
-                Профиль
-              </NavLink>
-            </>
-          )}
-          {isStaff(session.user.role) && (
-            <NavLink href="/admin" short="Админ">
-              Админка
-            </NavLink>
-          )}
-          <span className="hidden max-w-[10rem] truncate text-xs text-muted-foreground md:inline">
-            {session.user.name ?? session.user.email}
-          </span>
-          <SignOutButton />
-        </>
-      ) : (
-        <GuestNav />
-      )}
+      {session?.user ? <AuthNav user={session.user} /> : <GuestNav />}
     </nav>
   );
 }
