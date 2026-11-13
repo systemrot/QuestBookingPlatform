@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: `Условия использования — ${siteConfig.brandName}`,
+  title: "Условия использования",
   description: "Правила пользования сервисом бронирования квестов НеКвест.",
 };
 

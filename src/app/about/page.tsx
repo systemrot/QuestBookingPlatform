@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: `О нас — ${siteConfig.brandName}`,
+  title: "О нас",
   description: "Информация о сервисе бронирования квестов.",
 };
 

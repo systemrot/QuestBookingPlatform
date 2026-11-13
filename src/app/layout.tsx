@@ -6,13 +6,15 @@ import { auth } from "@/auth";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Footer } from "@/components/Footer";
 import { SiteHeader } from "@/components/site-header";
-import { siteConfig } from "@/config/site";
+import { getSiteUrl, siteConfig } from "@/config/site";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
+
+const siteUrl = getSiteUrl();
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -51,9 +53,49 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${siteConfig.brandName} — бронирование квестов`,
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: `${siteConfig.brandName} — бронирование квестов`,
+    template: `%s — ${siteConfig.brandName}`,
+  },
   description:
     "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+  applicationName: siteConfig.brandName,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: siteUrl,
+    siteName: siteConfig.brandName,
+    title: `${siteConfig.brandName} — бронирование квестов`,
+    description:
+      "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+    images: [
+      {
+        url: "/brand/hero-cabin.jpg",
+        width: 1920,
+        height: 1080,
+        alt: siteConfig.brandName,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.brandName} — бронирование квестов`,
+    description:
+      "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+    images: ["/brand/hero-cabin.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    yandex: process.env.YANDEX_VERIFICATION || undefined,
+  },
 };
 
 export default async function RootLayout({
