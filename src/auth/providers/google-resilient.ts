@@ -24,7 +24,11 @@ export function GoogleResilient(options: GoogleOpts): OAuthConfig<GoogleProfile>
     ...base,
     token: {
       url: "https://oauth2.googleapis.com/token",
-      async request({ params, provider }) {
+      async request(context: {
+        params: Record<string, unknown>;
+        provider: { clientId?: string; clientSecret?: string };
+      }) {
+        const { params, provider } = context;
         const body = new URLSearchParams();
         body.set("grant_type", "authorization_code");
         body.set("code", String(params.code ?? ""));
@@ -60,8 +64,8 @@ export function GoogleResilient(options: GoogleOpts): OAuthConfig<GoogleProfile>
     },
     userinfo: {
       url: "https://openidconnect.googleapis.com/v1/userinfo",
-      async request({ tokens }) {
-        const accessToken = tokens.access_token;
+      async request(context: { tokens: { access_token?: string } }) {
+        const accessToken = context.tokens.access_token;
         if (!accessToken) {
           throw new Error("google_missing_access_token");
         }
