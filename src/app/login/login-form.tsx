@@ -25,9 +25,28 @@ type Props = {
   oauth: OAuthProvidersEnabled;
 };
 
+function oauthErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "OAuthCallback":
+    case "Callback":
+    case "OAuthSignIn":
+      return "Не удалось войти через соцсеть (сервер не достучался до Google). Попробуйте ещё раз или войдите через Яндекс / email.";
+    case "OAuthAccountNotLinked":
+      return "Этот email уже зарегистрирован другим способом. Войдите тем же методом, что раньше.";
+    case "AccessDenied":
+      return "Вход отклонён. Разрешите доступ в окне Google/Яндекс и попробуйте снова.";
+    case "Configuration":
+      return "Вход через соцсеть временно недоступен. Используйте email или Яндекс.";
+    default:
+      return "Не удалось войти. Попробуйте другой способ входа.";
+  }
+}
+
 export function LoginForm({ oauth }: Props) {
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl") ?? "/");
+  const oauthError = oauthErrorMessage(searchParams.get("error"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +56,14 @@ export function LoginForm({ oauth }: Props) {
 
   return (
     <div className="space-y-4">
+      {oauthError ? (
+        <p
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {oauthError}
+        </p>
+      ) : null}
       <OAuthSignInButtons callbackUrl={callbackUrl} providers={oauth} />
       {anyOAuth ? (
         <div className="relative">

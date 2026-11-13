@@ -1,10 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { authConfig } from "@/auth.config";
+import { GoogleResilient } from "@/auth/providers/google-resilient";
 import { Yandex, type YandexProfile } from "@/auth/providers/yandex";
 import { Vk, resolveVkEmail, type VkProfile } from "@/auth/providers/vk";
 import { emailField, loginPasswordField } from "@/lib/field-limits";
@@ -202,7 +202,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       : []),
     ...(googleConfigured
       ? [
-          Google({
+          GoogleResilient({
             clientId: process.env.AUTH_GOOGLE_ID!,
             clientSecret: process.env.AUTH_GOOGLE_SECRET!,
           }),

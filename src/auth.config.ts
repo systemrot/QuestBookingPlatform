@@ -5,6 +5,8 @@ export const authConfig = {
   secret: process.env.AUTH_SECRET,
   pages: {
     signIn: "/login",
+    // Avoid Auth.js English "Server error" page — show message on /login instead.
+    error: "/login",
   },
   session: {
     strategy: "jwt",
