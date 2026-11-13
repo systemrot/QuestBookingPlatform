@@ -1,12 +1,13 @@
 import { invalidateUserBookingData, invalidateAdminData } from "@/lib/cache";
 import { invalidateAvailabilityCache } from "@/lib/availability";
+import { notifyManagerBookingPaid } from "@/lib/mail/notify-manager-paid";
 import { clearPendingHoldMemory } from "@/lib/pending-hold";
 import { dbUrgent } from "@/lib/prisma";
 
 /** Помечает бронирование оплаченным и фиксирует слот (идемпотентно). */
 export async function markBookingPaid(bookingId: string, paymentId: string | null) {
   // dbUrgent + без interactive $transaction: pooler (6543) их рвёт/вешает на 20–30с.
-  return dbUrgent(async (prisma) => {
+  const result = await dbUrgent(async (prisma) => {
     const now = new Date();
 
     const booking = await prisma.booking.findUnique({
@@ -78,4 +79,11 @@ export async function markBookingPaid(bookingId: string, paymentId: string | nul
     invalidateAdminData();
     return { ok: true as const, already: false as const };
   });
+
+  // Письмо менеджеру только при новом переходе в PAID (не при повторном webhook).
+  if (result.ok && !("already" in result && result.already)) {
+    void notifyManagerBookingPaid(bookingId);
+  }
+
+  return result;
 }
