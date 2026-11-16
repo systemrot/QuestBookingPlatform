@@ -17,7 +17,9 @@ export const proxy = auth((req) => {
     path.startsWith("/bookings/");
   const isAdmin = path.startsWith("/admin");
   const isOwnerOnly =
-    path.startsWith("/admin/quests") || path.startsWith("/admin/actors");
+    path.startsWith("/admin/quests") ||
+    path.startsWith("/admin/actors") ||
+    path.startsWith("/admin/team");
 
   if (isUserOnly) {
     if (!session?.user) {

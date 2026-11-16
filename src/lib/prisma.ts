@@ -12,7 +12,8 @@ type PrismaGlobal = {
 
 const globalForPrisma = globalThis as unknown as PrismaGlobal;
 
-const POOL_CONFIG_KEY = "v11-self-hosted-pg";
+/** Bump when Prisma models change so the global singleton is recreated. */
+const POOL_CONFIG_KEY = "v12-feedback-board";
 
 function isSupabasePooler(raw: string): boolean {
   try {
@@ -117,7 +118,9 @@ function getPrismaClient(): PrismaClient {
     cached &&
     globalForPrisma.poolConfigKey === POOL_CONFIG_KEY &&
     // После prisma generate старый singleton без новых моделей — пересоздаём.
-    typeof (cached as { city?: unknown }).city !== "undefined"
+    typeof (cached as { city?: unknown; feedback?: unknown }).city !==
+      "undefined" &&
+    typeof (cached as { feedback?: unknown }).feedback !== "undefined"
   ) {
     return cached;
   }

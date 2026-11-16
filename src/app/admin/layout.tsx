@@ -16,7 +16,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:gap-6 lg:py-8">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-start lg:gap-6 lg:py-8">
       <div className="lg:hidden">
         <AdminNav variant="mobile" role={session.user.role} />
       </div>

@@ -230,6 +230,11 @@ html[data-tg-browser] .site-chrome-header header {
   }
 }
 
+html:has([data-home-split-root]),
+body:has([data-home-split-root]) {
+  overflow-x: clip;
+}
+
 body:has([data-home-split-root]) > .relative.z-10,
 body:has([data-home-split-root]) > .relative.z-10 > .flex-1,
 body:has([data-home-split-root]) main {
@@ -237,6 +242,8 @@ body:has([data-home-split-root]) main {
   min-height: 0;
   flex: none;
   background: transparent;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /*
@@ -252,7 +259,9 @@ body:has([data-home-split-root]) main {
   width: 100%;
   max-width: 100%;
   background: #0a0707;
-  overflow: visible;
+  /* Knife props / brush CTAs hang outside cards — clip so the page
+     doesn't grow a horizontal scrollbar. */
+  overflow-x: clip;
 }
 
 .home-split-hero {
@@ -262,8 +271,10 @@ body:has([data-home-split-root]) main {
   grid-template-rows: minmax(100svh, auto);
   grid-template-areas: "stage main";
   width: 100%;
+  max-width: 100%;
   min-height: 100svh;
-  overflow: visible;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .home-split-scene {
@@ -509,7 +520,9 @@ body:has([data-home-split-root]) main {
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
+  min-width: 0;
   min-height: 0;
+  max-width: 100%;
   /* Shift content left toward the character — close the empty gap */
   margin-left: -3.75rem;
   /* Align block with the character’s head, nudged slightly down */
@@ -526,7 +539,8 @@ body:has([data-home-split-root]) main {
   position: relative;
   max-width: min(52rem, 100%);
   width: fit-content;
-  flex-shrink: 0;
+  min-width: 0;
+  flex-shrink: 1;
   isolation: isolate;
 }
 
@@ -895,6 +909,11 @@ body:has([data-home-split-root]) main {
 
 .home-split-footer-bar-sep {
   color: color-mix(in oklch, var(--blood-hot) 60%, transparent);
+}
+
+.home-split #catalog {
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .home-split #catalog > ul {

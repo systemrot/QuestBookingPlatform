@@ -25,6 +25,18 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum FeedbackKind {
+  WISH
+  REVIEW
+  BUG
+  OTHER
+}
+
+enum FeedbackVoteValue {
+  LIKE
+  DISLIKE
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -39,6 +51,54 @@ model User {
   bookings           Booking[]
   messagesSent       ChatMessage[] @relation("MessageSender")
   messagesReceived   ChatMessage[] @relation("MessageReceiver")
+  feedback           Feedback[]
+  feedbackVotes      FeedbackVote[]
+  feedbackComments   FeedbackComment[]
+}
+
+model Feedback {
+  id        String       @id @default(cuid())
+  userId    String
+  kind      FeedbackKind @default(WISH)
+  message   String
+  createdAt DateTime     @default(now())
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes    FeedbackVote[]
+  comments FeedbackComment[]
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model FeedbackVote {
+  id         String            @id @default(cuid())
+  feedbackId String
+  userId     String
+  value      FeedbackVoteValue
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, userId])
+  @@index([feedbackId])
+  @@index([userId])
+}
+
+model FeedbackComment {
+  id         String   @id @default(cuid())
+  feedbackId String
+  userId     String
+  message    String
+  createdAt  DateTime @default(now())
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId, createdAt])
+  @@index([userId])
 }
 
 model City {

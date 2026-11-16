@@ -171,3 +171,104 @@ export async function deleteActor(id: string) {
     return { error: "Не удалось удалить актёра." as const };
   }
 }
+
+const STAFF_MUTABLE_ROLES = ["USER", "ADMIN"] as const;
+type StaffMutableRole = (typeof STAFF_MUTABLE_ROLES)[number];
+
+function isStaffMutableRole(role: unknown): role is StaffMutableRole {
+  return role === "USER" || role === "ADMIN";
+}
+
+/** OWNER-only: promote/demote USER ↔ ADMIN. Never touches OWNER. */
+export async function setStaffRole(input: {
+  userId: string;
+  role: StaffMutableRole;
+}) {
+  const session = await ensureOwner();
+  if (!session?.user?.id) return { error: "Недостаточно прав." as const };
+
+  const userId = input.userId.trim();
+  if (!userId) return { error: "Не указан пользователь." as const };
+  if (!isStaffMutableRole(input.role)) {
+    return { error: "Допустимы только роли USER и ADMIN." as const };
+  }
+  if (userId === session.user.id) {
+    return { error: "Нельзя менять свою роль." as const };
+  }
+
+  try {
+    const target = await dbUrgent((prisma) =>
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true, name: true },
+      })
+    );
+    if (!target) return { error: "Пользователь не найден." as const };
+    if (!isStaffMutableRole(target.role)) {
+      return { error: "Роль владельца нельзя изменить через интерфейс." as const };
+    }
+    if (target.role === input.role) {
+      return { success: true as const, name: target.name };
+    }
+
+    await dbUrgent((prisma) =>
+      prisma.user.update({
+        where: { id: target.id },
+        data: { role: input.role },
+      })
+    );
+
+    revalidatePath("/admin/team");
+    return { success: true as const, name: target.name };
+  } catch (e) {
+    console.error("[setStaffRole]", e);
+    return { error: "Не удалось изменить роль." as const };
+  }
+}
+
+/** OWNER-only: promote an existing USER to ADMIN by exact email. */
+export async function grantAdminByEmail(emailRaw: string) {
+  const session = await ensureOwner();
+  if (!session?.user?.id) return { error: "Недостаточно прав." as const };
+
+  const email = emailRaw.trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    return { error: "Укажите корректный email." as const };
+  }
+
+  try {
+    const target = await dbUrgent((prisma) =>
+      prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+        select: { id: true, role: true, name: true, email: true },
+      })
+    );
+    if (!target) {
+      return {
+        error: "Пользователь с таким email не найден. Сначала пусть зарегистрируется." as const,
+      };
+    }
+    if (target.id === session.user.id) {
+      return { error: "Нельзя менять свою роль." as const };
+    }
+    if (target.role === "OWNER") {
+      return { error: "Роль владельца нельзя изменить через интерфейс." as const };
+    }
+    if (target.role === "ADMIN") {
+      return { error: "Этот пользователь уже администратор." as const };
+    }
+
+    await dbUrgent((prisma) =>
+      prisma.user.update({
+        where: { id: target.id },
+        data: { role: "ADMIN" },
+      })
+    );
+
+    revalidatePath("/admin/team");
+    return { success: true as const, name: target.name, email: target.email };
+  } catch (e) {
+    console.error("[grantAdminByEmail]", e);
+    return { error: "Не удалось выдать права." as const };
+  }
+}
