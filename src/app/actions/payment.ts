@@ -39,6 +39,7 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
           id: true,
           status: true,
           expiresAt: true,
+          contactEmail: true,
           slot: { select: { quest: { select: { title: true } } } },
           user: { select: { email: true } },
         },
@@ -99,7 +100,8 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
         description,
         returnUrl: `${base}/payment/return`,
         bookingId,
-        customerEmail: booking.user.email ?? "no-reply@nekvest.ru",
+        customerEmail:
+          booking.user?.email ?? booking.contactEmail ?? "no-reply@nekvest.ru",
       });
       if ("error" in created) {
         return { error: created.error };
@@ -142,7 +144,7 @@ export async function startBookingPayment(bookingId: string): Promise<StartPayme
         description,
         password1: pass1,
         isTest,
-        email: booking.user.email ?? undefined,
+        email: booking.user?.email ?? booking.contactEmail ?? undefined,
         resultUrl,
         successUrl,
         failUrl,

@@ -48,6 +48,9 @@ export async function notifyManagerBookingPaid(bookingId: string): Promise<void>
           id: true,
           paymentId: true,
           note: true,
+          contactName: true,
+          contactEmail: true,
+          contactPhone: true,
           user: { select: { name: true, email: true, phone: true } },
           slot: {
             select: {
@@ -73,9 +76,10 @@ export async function notifyManagerBookingPaid(bookingId: string): Promise<void>
     const city = booking.slot.quest.city.name;
     const when = formatRuDateTime(booking.slot.startTime);
     const price = formatPrice(booking.slot.price);
-    const guest = booking.user.name;
-    const email = booking.user.email;
-    const phone = booking.user.phone?.trim() || "—";
+    const guest = booking.user?.name ?? booking.contactName ?? "Гость";
+    const email = booking.user?.email ?? booking.contactEmail ?? "—";
+    const phone =
+      booking.user?.phone?.trim() || booking.contactPhone?.trim() || "—";
 
     const subject = `Оплата: ${quest} · ${when}`;
     const text = [
