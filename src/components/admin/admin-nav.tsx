@@ -8,6 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
   ChartColumn,
+  CircleUserRound,
   Clapperboard,
   Drama,
   Info,
@@ -86,6 +87,12 @@ const LINKS: NavLinkDef[] = [
     match: (p) => p.startsWith("/admin/feedback"),
     icon: Lightbulb,
     feedback: true,
+  },
+  {
+    href: "/admin/profile",
+    label: "Профиль",
+    match: (p) => p.startsWith("/admin/profile"),
+    icon: CircleUserRound,
   },
   { href: "/", label: "На сайт", match: () => false },
 ];

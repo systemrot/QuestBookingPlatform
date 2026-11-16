@@ -105,9 +105,10 @@ export default async function ProfilePage() {
 
         <Card className="min-w-0 border-border/80 bg-card/50">
           <CardHeader>
-            <CardTitle className="font-heading text-xl">Мои бронирования</CardTitle>
+            <CardTitle className="font-heading text-xl">Мои заявки</CardTitle>
             <CardDescription>
-              По умолчанию — активные. Отменённые можно удалить списком.
+              Заявка — пожелание по времени. Менеджер свяжется для подтверждения.
+              Отменённые можно удалить списком.
             </CardDescription>
           </CardHeader>
           <CardContent className="min-w-0">

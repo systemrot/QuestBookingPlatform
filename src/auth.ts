@@ -141,7 +141,7 @@ async function hydrateTokenFromDb(token: {
   }
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
@@ -150,7 +150,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider && OAUTH_PROVIDERS.has(account.provider)) return true;
       return false;
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
       if (account?.provider && OAUTH_PROVIDERS.has(account.provider)) {
         const draft = {
           id: user?.id,
@@ -180,6 +180,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user.name) token.name = user.name;
       }
 
+      if (trigger === "update" && typeof token.id === "string") {
+        try {
+          const fresh = await db((prisma) =>
+            prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { name: true, email: true, role: true },
+            })
+          );
+          if (fresh) {
+            token.name = fresh.name;
+            token.email = fresh.email;
+            token.role = fresh.role;
+          }
+        } catch (error) {
+          console.error("[auth] jwt update refresh error:", error);
+        }
+      }
+
       await hydrateTokenFromDb(token);
       return token;
     },
@@ -187,6 +205,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         if (typeof token.id === "string") session.user.id = token.id;
         if (hasAppRole(token.role)) session.user.role = token.role;
+        if (typeof token.name === "string") session.user.name = token.name;
+        if (typeof token.email === "string") session.user.email = token.email;
       }
       return session;
     },

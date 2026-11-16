@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { auth } from "@/auth";
+import { auth, unstable_update } from "@/auth";
 import { nameField } from "@/lib/field-limits";
 import { invalidateUserProfileData } from "@/lib/cache";
 import { db } from "@/lib/prisma";
@@ -73,7 +73,19 @@ export async function updateProfileAction(
   );
 
   revalidatePath("/profile");
+  revalidatePath("/admin/profile");
+  revalidatePath("/admin/team");
+  revalidatePath("/admin/feedback");
   invalidateUserProfileData(session.user.id);
+
+  try {
+    await unstable_update({
+      user: { name: parsed.data.name },
+    });
+  } catch (error) {
+    console.error("[updateProfileAction] session update:", error);
+  }
+
   return { success: true };
 }
 

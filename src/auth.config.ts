@@ -24,6 +24,8 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as "USER" | "ADMIN" | "OWNER";
+        if (typeof token.name === "string") session.user.name = token.name;
+        if (typeof token.email === "string") session.user.email = token.email;
       }
       return session;
     },

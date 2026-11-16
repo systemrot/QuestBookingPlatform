@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 
 import { updateProfileAction, type UpdateProfileState } from "@/app/actions/profile";
 import { FIELD_LIMITS } from "@/lib/field-limits";
@@ -27,8 +28,14 @@ type Props = {
 };
 
 export function EditProfileDialog({ name, age, phone }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(updateProfileAction, initialState);
+
+  useEffect(() => {
+    if (!state?.success) return;
+    router.refresh();
+  }, [state?.success, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

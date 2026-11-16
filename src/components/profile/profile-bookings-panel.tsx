@@ -243,9 +243,9 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
       {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {filter === "active"
-            ? "Нет активных бронирований."
+            ? "Нет активных заявок."
             : filter === "cancelled"
-              ? "Нет отменённых бронирований."
+              ? "Нет отменённых заявок."
               : "Список пуст."}
         </p>
       ) : (
@@ -336,9 +336,9 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
                     </TableHead>
                   ) : null}
                   <TableHead className="w-[28%]">Квест</TableHead>
-                  <TableHead className="w-[32%]">Слот</TableHead>
+                  <TableHead className="w-[32%]">Время</TableHead>
                   <TableHead className="w-[22%]">Статус</TableHead>
-                  <TableHead className="w-[18%]">Оплата</TableHead>
+                  <TableHead className="w-[18%]">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
