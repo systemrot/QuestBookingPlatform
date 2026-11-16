@@ -60,17 +60,24 @@ export const metadata: Metadata = {
     template: `%s — ${siteConfig.brandName}`,
   },
   description:
-    "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+    "Яркие сценарии и живые эмоции. Оставьте заявку на квест — менеджер свяжется и подтвердит запись.",
   applicationName: siteConfig.brandName,
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0a0707" },
     { media: "(prefers-color-scheme: light)", color: "#0a0707" },
   ],
   icons: {
+    // Google: square >48px, crawlable, stable URL. Tiny sizes use НК monogram (not a soft wordmark).
     icon: [
-      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
-      { url: "/brand/nekvest-icon-512.png", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
+    shortcut: [{ url: "/favicon.ico" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   alternates: {
@@ -83,7 +90,7 @@ export const metadata: Metadata = {
     siteName: siteConfig.brandName,
     title: `${siteConfig.brandName} — бронирование квестов`,
     description:
-      "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+      "Яркие сценарии и живые эмоции. Оставьте заявку на квест — менеджер свяжется и подтвердит запись.",
     images: [
       {
         url: "/brand/og-share.jpg",
@@ -99,7 +106,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${siteConfig.brandName} — бронирование квестов`,
     description:
-      "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+      "Яркие сценарии и живые эмоции. Оставьте заявку на квест — менеджер свяжется и подтвердит запись.",
     images: [`${siteUrl}/brand/og-share.jpg`],
   },
   // VK reads og:* and optionally vk:image for link snippets.
@@ -112,7 +119,8 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
-    yandex: process.env.YANDEX_VERIFICATION || undefined,
+    // Public Webmaster token (also overridable via env).
+    yandex: process.env.YANDEX_VERIFICATION || "4b786bd2b169fcd0",
   },
 };
 

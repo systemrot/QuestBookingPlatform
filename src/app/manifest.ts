@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: `${siteConfig.brandName} — бронирование квестов`,
     short_name: siteConfig.brandName,
     description:
-      "Яркие сценарии и живые эмоции. Бронируйте квесты онлайн: удобные слоты и оплата за 20 минут.",
+      "Яркие сценарии и живые эмоции. Оставьте заявку на квест — менеджер свяжется и подтвердит запись.",
     start_url: "/",
     display: "standalone",
     background_color: "#0a0707",

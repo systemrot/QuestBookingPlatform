@@ -4,8 +4,13 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-import { createBooking, getAvailableSlots, type SlotOption } from "@/app/actions/booking";
 import {
+  createBookingRequest,
+  getAvailableSlots,
+  type SlotOption,
+} from "@/app/actions/booking";
+import {
+  MAX_PARTY_SIZE,
   listBookableDays,
   listScheduleStarts,
   makeVirtualSlotId,
@@ -13,6 +18,11 @@ import {
   slotEndTime,
   toMoscowDateKey,
 } from "@/lib/booking-policy";
+import {
+  clampEmailInput,
+  clampNameInput,
+  FIELD_LIMITS,
+} from "@/lib/field-limits";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -29,16 +39,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BookingCareProgress } from "@/components/booking-care-progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RuPhoneInput } from "@/components/ui/ru-phone-input";
 import { BloodBrushDrips } from "@/components/blood-brush-drips";
+import { PartySizeStepper } from "@/components/party-size-stepper";
 import { QuestCardProp } from "@/components/quest-card-prop";
 import { formatRub, formatRu } from "@/lib/locale";
-import {
-  clearClientPendingHold,
-  setClientPendingHold,
-} from "@/lib/pending-hold-client";
+import { displayRuPhoneFromStored } from "@/lib/ru-phone";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+type FieldErrors = {
+  name?: string;
+  phone?: string;
+  partySize?: string;
+  email?: string;
+};
+
+function validateRequestFields(input: {
+  name: string;
+  phoneE164: string | null;
+  partySize: number;
+  email: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  const name = input.name.trim();
+  if (name.length < 2) {
+    errors.name = "Укажите имя (минимум 2 символа)";
+  } else if (name.length > FIELD_LIMITS.name.max) {
+    errors.name = `Имя не длиннее ${FIELD_LIMITS.name.max} символов`;
+  }
+
+  if (!input.phoneE164) {
+    errors.phone = "Укажите полный мобильный: +7 (9XX) XXX-XX-XX";
+  }
+
+  if (
+    !Number.isInteger(input.partySize) ||
+    input.partySize < 1 ||
+    input.partySize > MAX_PARTY_SIZE
+  ) {
+    errors.partySize = `Выберите число людей от 1 до ${MAX_PARTY_SIZE}`;
+  }
+
+  const email = input.email.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.email = "Некорректный email";
+  }
+
+  return errors;
+}
 
 export type QuestForCatalog = {
   id: string;
@@ -80,6 +131,8 @@ function resolveQuestImage(src: string | null | undefined) {
   return COVER_ALIASES[src] ?? src;
 }
 
+type Step = "schedule" | "details" | "success";
+
 export function QuestCatalogCard({
   quest,
   session,
@@ -90,26 +143,48 @@ export function QuestCatalogCard({
   const propVariant = quest.propVariant ?? 0;
   const bookableDays = React.useMemo(() => listBookableDays(), []);
   const [open, setOpen] = React.useState(false);
+  const [step, setStep] = React.useState<Step>("schedule");
   const [date, setDate] = React.useState<Date | undefined>(() => listBookableDays()[0]);
   const [slots, setSlots] = React.useState<SlotOption[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [pendingSlot, setPendingSlot] = React.useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = React.useState<SlotOption | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
   const [descExpanded, setDescExpanded] = React.useState(false);
   const [imageSrc, setImageSrc] = React.useState(() =>
     resolveQuestImage(quest.image)
   );
 
+  const [name, setName] = React.useState("");
+  const [phoneE164, setPhoneE164] = React.useState<string | null>(null);
+  const [partySize, setPartySize] = React.useState(2);
+  const [email, setEmail] = React.useState("");
+  const [submitAttempted, setSubmitAttempted] = React.useState(false);
+  const [touched, setTouched] = React.useState<{
+    name?: boolean;
+    phone?: boolean;
+    email?: boolean;
+  }>({});
+
   const description =
     quest.description?.trim() ||
-    "Выберите удобный день и время — слоты обновляются в реальном времени.";
+    "Выберите удобный день и время — менеджер свяжется для подтверждения.";
   const descriptionLong = description.length > 160;
+  const canBook = !session || session.role === "USER";
 
   React.useEffect(() => {
     setImageSrc(resolveQuestImage(quest.image));
   }, [quest.image]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    if (session?.role === "USER") {
+      if (session.name) setName((v) => v || session.name || "");
+      if (session.email) setEmail((v) => v || session.email || "");
+    }
+  }, [open, session]);
+
   const loadSlots = React.useCallback(async () => {
-    if (!date || !session || session.role !== "USER") return;
+    if (!date || !canBook) return;
 
     const dateStr = toMoscowDateKey(date);
     const [y, m, d] = dateStr.split("-").map(Number);
@@ -117,7 +192,6 @@ export function QuestCatalogCard({
     const dayTo = moscowDateTime(y, m, d, 23, 59);
     const now = new Date();
 
-    // Мгновенно показываем сетку из политики (без БД), потом уточняем занятость.
     const optimistic: SlotOption[] = listScheduleStarts(now)
       .filter((s) => s.getTime() >= dayFrom.getTime() && s.getTime() <= dayTo.getTime())
       .map((start) => ({
@@ -136,51 +210,80 @@ export function QuestCatalogCard({
       return;
     }
     if ("slots" in res) setSlots(res.slots);
-  }, [date, quest.id, quest.price, session]);
+  }, [date, quest.id, quest.price, canBook]);
 
   React.useEffect(() => {
-    if (open && session?.role === "USER" && date) {
+    if (open && canBook && date && step === "schedule") {
       void loadSlots();
     }
-  }, [open, date, session, loadSlots]);
+  }, [open, date, canBook, step, loadSlots]);
 
-  async function handleBook(slotId: string) {
-    if (pendingSlot) return;
+  function resetFlow() {
+    setStep("schedule");
+    setSelectedSlot(null);
+    setSubmitting(false);
+    setDescExpanded(false);
+    setSubmitAttempted(false);
+    setTouched({});
+  }
 
-    // Старый клиентский флаг после снятия админом / истечения не должен мешать.
-    clearClientPendingHold();
+  function pickSlot(slot: SlotOption) {
+    setSelectedSlot(slot);
+    setStep("details");
+    setSubmitAttempted(false);
+    setTouched({});
+  }
 
-    setPendingSlot(slotId);
-    setOpen(false);
+  const liveErrors = validateRequestFields({
+    name,
+    phoneE164,
+    partySize,
+    email,
+  });
+
+  function showError(field: keyof FieldErrors) {
+    if (field === "partySize") {
+      return submitAttempted ? liveErrors.partySize : undefined;
+    }
+    if (touched[field] || submitAttempted) return liveErrors[field];
+    return undefined;
+  }
+
+  async function submitRequest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedSlot || submitting) return;
+
+    setSubmitAttempted(true);
+    setTouched({ name: true, phone: true, email: true });
+    const errors = validateRequestFields({
+      name,
+      phoneE164,
+      partySize,
+      email,
+    });
+    if (Object.keys(errors).length > 0) {
+      toast.error("Проверьте поля формы");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const res = await createBooking(slotId);
+      const res = await createBookingRequest({
+        slotId: selectedSlot.id,
+        name,
+        phone: phoneE164!,
+        partySize,
+        email: email.trim() || undefined,
+      });
       if ("error" in res && res.error) {
-        if ("code" in res && res.code === "PENDING_EXISTS") {
-          if ("expiresAt" in res && typeof res.expiresAt === "string") {
-            setClientPendingHold(res.expiresAt);
-          } else {
-            setClientPendingHold(new Date(Date.now() + 20 * 60_000).toISOString());
-          }
-        }
         toast.error(res.error);
         return;
       }
-      if ("expiresAt" in res && typeof res.expiresAt === "string") {
-        setClientPendingHold(res.expiresAt);
-      }
-      if ("replacedPreviousHold" in res && res.replacedPreviousHold) {
-        toast.success("Холд обновлён", {
-          description:
-            "Предыдущая неоплаченная бронь снята — активен только новый слот (20 минут на оплату).",
-        });
-      } else {
-        toast.success("Слот забронирован. Оплатите в «Мои бронирования».");
-      }
-      setSlots([]);
+      setStep("success");
     } catch {
-      toast.error("Не удалось оформить бронирование. Попробуйте ещё раз.");
+      toast.error("Не удалось отправить заявку. Попробуйте ещё раз.");
     } finally {
-      setPendingSlot(null);
+      setSubmitting(false);
     }
   }
 
@@ -222,11 +325,9 @@ export function QuestCatalogCard({
               <div className="quest-card-media-wash pointer-events-none absolute inset-0" />
               <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_48px_rgba(0,0,0,0.55)]" />
             </div>
-            {/* Outside overflow:hidden media — brush stroke isn't sheared on the left */}
             <span className="quest-price-badge">
               От {formatRub(quest.price)}
             </span>
-            {/* Stronger -mt pulls title into the media fade — less empty dark band */}
             <CardHeader className="relative z-[2] -mt-10 flex flex-1 flex-col gap-2.5 bg-transparent px-4 pb-1.5 pt-2 sm:-mt-12">
               <CardTitle className="quest-card-title min-h-[2.1em] text-[1.2rem] sm:text-[1.28rem]">
                 {quest.title}
@@ -249,14 +350,13 @@ export function QuestCatalogCard({
                   propVariant === 0 ? "a" : propVariant === 1 ? "b" : "c"
                 }
               />
-              Забронировать
+              Оставить заявку
               <span data-brush-arrow aria-hidden>
                 →
               </span>
             </Button>
           </CardFooter>
         </Card>
-        {/* Outside clip-path — larger, higher, overlaps the card corner */}
         <div className="quest-card-prop-wrap pointer-events-none absolute -bottom-3 -right-3 z-20 rotate-[8deg] sm:-bottom-2 sm:-right-4 sm:rotate-[10deg]">
           <QuestCardProp variant={propVariant} />
         </div>
@@ -266,7 +366,7 @@ export function QuestCatalogCard({
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) setDescExpanded(false);
+          if (!next) resetFlow();
         }}
       >
         <DialogContent
@@ -278,202 +378,361 @@ export function QuestCatalogCard({
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             <div className="relative shrink-0">
-            <div className="relative aspect-[16/12] w-full bg-muted sm:aspect-[16/11] sm:min-h-[22rem]">
-              <Image
-                src={imageSrc}
-                alt=""
-                fill
-                className="object-cover object-[center_18%] sm:object-[center_22%]"
-                sizes="(max-width: 768px) 100vw, 576px"
-              />
-              {/* Длинный градиент в цвет модалки — без резкой «полосы» на стыке */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-10% via-popover/80 via-40% to-transparent to-72%" />
-              <Badge className="absolute left-3 top-3 z-[1] bg-background/90 text-foreground backdrop-blur">
-                От {formatRub(quest.price)}
-              </Badge>
-            </div>
+              <div className="relative aspect-[16/12] w-full bg-muted sm:aspect-[16/11] sm:min-h-[22rem]">
+                <Image
+                  src={imageSrc}
+                  alt=""
+                  fill
+                  className="object-cover object-[center_18%] sm:object-[center_22%]"
+                  sizes="(max-width: 768px) 100vw, 576px"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-10% via-popover/80 via-40% to-transparent to-72%" />
+                <Badge className="absolute left-3 top-3 z-[1] bg-background/90 text-foreground backdrop-blur">
+                  От {formatRub(quest.price)}
+                </Badge>
+              </div>
 
-            <div className="relative z-[1] -mt-12 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-16 sm:px-5 sm:pb-5">
-              <DialogHeader className="gap-2 text-left">
-                <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] drop-shadow-sm sm:text-2xl">
-                  {quest.title}
-                </DialogTitle>
-                <DialogDescription
-                  className={cn(
-                    "text-sm leading-relaxed text-muted-foreground",
-                    !descExpanded && "line-clamp-2"
-                  )}
-                >
-                  {description}
-                </DialogDescription>
-                {descriptionLong ? (
-                  <button
-                    type="button"
-                    className="w-fit text-xs font-medium text-foreground/80 underline-offset-2 hover:underline"
-                    onClick={() => setDescExpanded((v) => !v)}
+              <div className="relative z-[1] -mt-12 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-16 sm:px-5 sm:pb-5">
+                <DialogHeader className="gap-2 text-left">
+                  <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] drop-shadow-sm sm:text-2xl">
+                    {quest.title}
+                  </DialogTitle>
+                  <DialogDescription
+                    className={cn(
+                      "text-sm leading-relaxed text-muted-foreground",
+                      !descExpanded && "line-clamp-2"
+                    )}
                   >
-                    {descExpanded ? "Свернуть" : "Читать полностью"}
-                  </button>
-                ) : null}
-              </DialogHeader>
+                    {description}
+                  </DialogDescription>
+                  {descriptionLong ? (
+                    <button
+                      type="button"
+                      className="w-fit text-xs font-medium text-foreground/80 underline-offset-2 hover:underline"
+                      onClick={() => setDescExpanded((v) => !v)}
+                    >
+                      {descExpanded ? "Свернуть" : "Читать полностью"}
+                    </button>
+                  ) : null}
+                </DialogHeader>
 
-              <div className="min-w-0 space-y-3 overflow-x-hidden rounded-xl border border-border/60 bg-muted/25 p-3 sm:p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Бронирование
-                </p>
-
-                {!session && (
-                  <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
-                    <p className="mb-3 text-muted-foreground">
-                      Войдите, чтобы выбрать дату и оформить бронирование.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Link href="/login" className={cn(buttonVariants({ size: "sm" }))}>
-                        Войти
-                      </Link>
-                      <Link
-                        href="/register"
-                        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                      >
-                        Создать аккаунт
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {(session?.role === "ADMIN" || session?.role === "OWNER") && (
-                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    Администратор не может оформить бронирование. Войдите как клиент.
+                <div className="min-w-0 space-y-3 overflow-x-hidden rounded-xl border border-border/60 bg-muted/25 p-3 sm:p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {step === "schedule"
+                      ? "Желаемое время"
+                      : step === "details"
+                        ? "Контакты"
+                        : "Готово"}
                   </p>
-                )}
 
-                {session?.role === "USER" && (
-                  <div className="min-w-0 space-y-4 overflow-x-hidden">
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Дата
-                        <span className="font-normal normal-case tracking-normal text-muted-foreground/80">
-                          {" "}
-                          · ближайшие {bookableDays.length} дн.
-                        </span>
+                  {(session?.role === "ADMIN" || session?.role === "OWNER") && (
+                    <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                      Администратор не может оставить заявку. Войдите как клиент
+                      или выйдите из аккаунта.
+                    </p>
+                  )}
+
+                  {canBook && step === "schedule" && (
+                    <div className="min-w-0 space-y-4 overflow-x-hidden">
+                      <p className="text-sm text-muted-foreground">
+                        Выберите удобные дату и время — это пожелание. Менеджер
+                        подтвердит запись по телефону.
                       </p>
-                      <div
-                        className="grid grid-cols-7 gap-1 sm:gap-1.5"
-                        role="listbox"
-                        aria-label="Выбор даты"
-                      >
-                        {bookableDays.map((day) => {
-                          const selected =
-                            date != null && toMoscowDateKey(day) === toMoscowDateKey(date);
-                          return (
-                            <button
-                              key={toMoscowDateKey(day)}
-                              type="button"
-                              role="option"
-                              aria-selected={selected}
-                              onClick={() => setDate(day)}
-                              className={cn(
-                                "flex min-w-0 flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 transition-colors sm:py-2",
-                                selected
-                                  ? "border-foreground/40 bg-foreground text-background"
-                                  : "border-border/70 bg-background/40 text-foreground hover:border-foreground/25 hover:bg-foreground/[0.06]"
-                              )}
-                            >
-                              <span
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Дата
+                          <span className="font-normal normal-case tracking-normal text-muted-foreground/80">
+                            {" "}
+                            · ближайшие {bookableDays.length} дн.
+                          </span>
+                        </p>
+                        <div
+                          className="grid grid-cols-7 gap-1 sm:gap-1.5"
+                          role="listbox"
+                          aria-label="Выбор даты"
+                        >
+                          {bookableDays.map((day) => {
+                            const selected =
+                              date != null &&
+                              toMoscowDateKey(day) === toMoscowDateKey(date);
+                            return (
+                              <button
+                                key={toMoscowDateKey(day)}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                onClick={() => setDate(day)}
                                 className={cn(
-                                  "text-[10px] uppercase leading-none",
-                                  selected ? "text-background/70" : "text-muted-foreground"
+                                  "flex min-w-0 flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 transition-colors sm:py-2",
+                                  selected
+                                    ? "border-foreground/40 bg-foreground text-background"
+                                    : "border-border/70 bg-background/40 text-foreground hover:border-foreground/25 hover:bg-foreground/[0.06]"
                                 )}
                               >
-                                {formatRu(day, "EEEEEE")}
-                              </span>
-                              <span className="text-sm font-medium tabular-nums leading-none">
-                                {formatRu(day, "d")}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="min-w-0 space-y-2 overflow-x-hidden">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {date ? formatRu(date, "EEEE, d MMMM") : "Выберите дату"}
-                        <span className="font-normal normal-case tracking-normal">
-                          {" "}
-                          · сеанс ~60 мин
-                        </span>
-                      </p>
-
-                      {loading && slots.length === 0 && (
-                        <div
-                          className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-                          aria-busy="true"
-                          aria-label="Загрузка слотов"
-                        >
-                          {[0, 1, 2, 3].map((i) => (
-                            <div
-                              key={i}
-                              className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50"
-                            />
-                          ))}
+                                <span
+                                  className={cn(
+                                    "text-[10px] uppercase leading-none",
+                                    selected
+                                      ? "text-background/70"
+                                      : "text-muted-foreground"
+                                  )}
+                                >
+                                  {formatRu(day, "EEEEEE")}
+                                </span>
+                                <span className="text-sm font-medium tabular-nums leading-none">
+                                  {formatRu(day, "d")}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
-                      )}
+                      </div>
 
-                      {!loading && slots.length === 0 && date && (
-                        <p className="text-sm text-muted-foreground">
-                          На эту дату нет свободных слотов.
+                      <div className="min-w-0 space-y-2 overflow-x-hidden">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {date ? formatRu(date, "EEEE, d MMMM") : "Выберите дату"}
+                          <span className="font-normal normal-case tracking-normal">
+                            {" "}
+                            · сеанс ~60 мин
+                          </span>
                         </p>
-                      )}
 
-                      {slots.length > 0 ? (
-                        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {slots.map((s) => {
-                            const busy = pendingSlot === s.id;
-                            return (
+                        {loading && slots.length === 0 && (
+                          <div
+                            className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                            aria-busy="true"
+                            aria-label="Загрузка слотов"
+                          >
+                            {[0, 1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="h-[3.25rem] animate-pulse rounded-lg bg-muted/50"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {!loading && slots.length === 0 && date && (
+                          <p className="text-sm text-muted-foreground">
+                            На эту дату нет подходящих окон.
+                          </p>
+                        )}
+
+                        {slots.length > 0 ? (
+                          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {slots.map((s) => (
                               <li key={s.id} className="min-w-0">
                                 <button
                                   type="button"
-                                  disabled={pendingSlot !== null}
-                                  onClick={() => void handleBook(s.id)}
+                                  onClick={() => pickSlot(s)}
                                   className={cn(
                                     "flex w-full flex-col items-start gap-0.5 rounded-lg border border-border/80 bg-background/50 px-3 py-2.5 text-left",
                                     "outline-none transition-colors",
-                                    "hover:border-foreground/30 hover:bg-foreground/[0.06]",
-                                    "disabled:cursor-not-allowed disabled:opacity-50",
-                                    busy && "border-foreground/35"
+                                    "hover:border-foreground/30 hover:bg-foreground/[0.06]"
                                   )}
                                 >
                                   <span className="text-base font-medium tabular-nums text-foreground">
                                     {formatRu(new Date(s.startTime), "HH:mm")}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {formatRub(s.price)}
+                                    выбрать
                                   </span>
                                 </button>
                               </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              <p className="text-xs text-muted-foreground">
-                После бронирования оплатите слот в «Мои бронирования» или в профиле.
-              </p>
-            </div>
+                  {canBook && step === "details" && selectedSlot && (
+                    <form className="space-y-4" onSubmit={(e) => void submitRequest(e)}>
+                      <div className="rounded-lg border border-border/70 bg-background/40 px-3 py-2.5 text-sm">
+                        <p className="text-muted-foreground">Желаемое время</p>
+                        <p className="font-medium text-foreground">
+                          {formatRu(new Date(selectedSlot.startTime), "EEEE, d MMMM, HH:mm")}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`req-name-${quest.id}`}>Имя</Label>
+                          <Input
+                            id={`req-name-${quest.id}`}
+                            value={name}
+                            onChange={(e) => setName(clampNameInput(e.target.value))}
+                            onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+                            placeholder="Как к вам обращаться"
+                            autoComplete="name"
+                            autoCapitalize="words"
+                            maxLength={FIELD_LIMITS.name.max}
+                            aria-invalid={Boolean(showError("name"))}
+                          />
+                          {showError("name") ? (
+                            <p className="text-xs text-destructive">{showError("name")}</p>
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`req-phone-${quest.id}`}>Телефон</Label>
+                          <RuPhoneInput
+                            id={`req-phone-${quest.id}`}
+                            value={phoneE164}
+                            onValueChange={setPhoneE164}
+                            onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                            aria-invalid={Boolean(showError("phone"))}
+                          />
+                          {showError("phone") ? (
+                            <p className="text-xs text-destructive">{showError("phone")}</p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">
+                              Мобильный номер для связи с менеджером
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label id={`req-party-label-${quest.id}`}>
+                            Количество людей
+                          </Label>
+                          <PartySizeStepper
+                            value={partySize}
+                            min={1}
+                            max={MAX_PARTY_SIZE}
+                            onChange={setPartySize}
+                            aria-labelledby={`req-party-label-${quest.id}`}
+                            aria-invalid={Boolean(showError("partySize"))}
+                          />
+                          {showError("partySize") ? (
+                            <p className="text-xs text-destructive">
+                              {showError("partySize")}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`req-email-${quest.id}`}>
+                            Email{" "}
+                            <span className="font-normal text-muted-foreground">
+                              (необязательно)
+                            </span>
+                          </Label>
+                          <Input
+                            id={`req-email-${quest.id}`}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(clampEmailInput(e.target.value))}
+                            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                            placeholder="you@example.com"
+                            autoComplete="email"
+                            maxLength={FIELD_LIMITS.email.max}
+                            aria-invalid={Boolean(showError("email"))}
+                          />
+                          {showError("email") ? (
+                            <p className="text-xs text-destructive">{showError("email")}</p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={submitting}
+                          onClick={() => {
+                            setStep("schedule");
+                            setSelectedSlot(null);
+                            setSubmitAttempted(false);
+                            setTouched({});
+                          }}
+                        >
+                          Назад
+                        </Button>
+                        <Button type="submit" disabled={submitting}>
+                          {submitting ? "Отправляем…" : "Оставить заявку"}
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+
+                  {canBook && step === "success" && selectedSlot && (
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+                        <p className="font-medium text-foreground">
+                          Заявка принята
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Ожидайте связи с менеджером. Мы перезвоним, чтобы
+                          подтвердить время и детали.
+                        </p>
+                      </div>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <p>
+                          <span className="text-foreground">Время:</span>{" "}
+                          {formatRu(
+                            new Date(selectedSlot.startTime),
+                            "d MMMM, HH:mm"
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-foreground">Телефон:</span>{" "}
+                          {displayRuPhoneFromStored(phoneE164)}
+                        </p>
+                        <p>
+                          <span className="text-foreground">Людей:</span> {partySize}
+                        </p>
+                      </div>
+                      {!session ? (
+                        <p className="text-xs text-muted-foreground">
+                          Чтобы видеть заявки и отменять их сами,{" "}
+                          <Link href="/login" className="underline underline-offset-2">
+                            войдите
+                          </Link>{" "}
+                          или{" "}
+                          <Link
+                            href="/register"
+                            className="underline underline-offset-2"
+                          >
+                            создайте аккаунт
+                          </Link>
+                          .
+                        </p>
+                      ) : (
+                        <Link
+                          href="/bookings"
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                        >
+                          Мои заявки
+                        </Link>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          resetFlow();
+                          setOpen(false);
+                        }}
+                      >
+                        Закрыть
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {step === "schedule" ? (
+                  <p className="text-xs text-muted-foreground">
+                    Время на сайте — пожелание. Финальную запись подтвердит
+                    менеджер по телефону.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      <BookingCareProgress
-        open={pendingSlot !== null}
-        questTitle={quest.title}
-      />
     </>
   );
 }

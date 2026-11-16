@@ -34,6 +34,8 @@ export {
 } from "@/lib/booking-policy";
 
 async function fetchBlockedRanges(now: Date): Promise<BlockRange[]> {
+  // REQUEST не блокирует сетку — заявки могут пересекаться.
+  // PENDING (legacy-холд) и PAID по-прежнему занимают окно.
   const rows = await dbUrgent((prisma) =>
     prisma.booking.findMany({
       where: {

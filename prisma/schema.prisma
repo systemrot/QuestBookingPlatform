@@ -17,6 +17,9 @@ enum Role {
 }
 
 enum BookingStatus {
+  /// Заявка на созвон (слот не блокируется).
+  REQUEST
+  /// Устаревший холд под оплату (код оставлен на будущее).
   PENDING
   PAID
   CANCELLED
@@ -87,23 +90,33 @@ model Slot {
 
 model Booking {
   id        String        @id @default(cuid())
-  userId    String
+  /// Null для гостевой заявки без аккаунта.
+  userId    String?
   slotId    String
-  status    BookingStatus @default(PENDING)
+  status    BookingStatus @default(REQUEST)
   paymentId String?
+  /// Контакт из формы заявки (имя).
+  contactName  String?
+  /// Контакт из формы заявки (телефон, нормализованный).
+  contactPhone String?
+  /// Число людей в заявке.
+  partySize    Int?
+  /// Email из формы (необязательный) или аккаунта.
+  contactEmail String?
   /// Заметки / пожелания к броне (админ).
   note      String?
-  /// До какого момента PENDING удерживает слот. Для PAID/CANCELLED обычно null.
+  /// До какого момента PENDING удерживает слот. Для REQUEST/PAID/CANCELLED обычно null.
   expiresAt DateTime? @db.Timestamptz(3)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slot Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot Slot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([slotId])
   @@index([status, expiresAt])
+  @@index([contactPhone, createdAt])
 }
 
 model Actor {

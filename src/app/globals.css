@@ -190,16 +190,16 @@
   background-color: #555555;
 }
 
-/* Скрытый скролл — для внутренних панелей модалок */
+/* Скрытый скролл — для внутренних панелей модалок / барабанов */
 .no-scrollbar {
-  scrollbar-width: none;
+  scrollbar-width: none !important;
   -ms-overflow-style: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 /* Hide global chrome when the split homepage owns header/footer (SSR-safe via :has) */

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const footerNav = [
   { href: "/", label: "Главная" },
   { href: "/about", label: "О нас" },
-  { href: "/bookings", label: "Мои бронирования" },
+  { href: "/bookings", label: "Мои заявки" },
 ] as const;
 
 const footerLegal = [

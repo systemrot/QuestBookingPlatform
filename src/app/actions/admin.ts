@@ -161,8 +161,10 @@ export async function adminCancelBooking(bookingId: string) {
 
   if ("error" in result) return result;
 
-  clearPendingHoldMemory(result.userId);
-  invalidateUserBookingData(result.userId);
+  if (result.userId) {
+    clearPendingHoldMemory(result.userId);
+    invalidateUserBookingData(result.userId);
+  }
   invalidateAdminData();
   invalidateAvailabilityCache();
   revalidatePath("/");

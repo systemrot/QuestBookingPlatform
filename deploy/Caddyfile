@@ -5,6 +5,13 @@
 	@shareAssets path /brand/og-share.jpg /favicon.png /apple-touch-icon.png /brand/nekvest-icon-512.png
 	header @shareAssets Cache-Control "public, max-age=604800, immutable"
 
+	# Webmaster / IndexNow ownership files (served without Next rebuild)
+	@verify path /yandex_4b786bd2b169fcd0.html /112491b4829c81ed5a51779b3ab4ba85.txt
+	handle @verify {
+		root * /srv/static-verify
+		file_server
+	}
+
 	reverse_proxy app:3000
 }
 

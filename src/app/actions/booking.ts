@@ -9,20 +9,18 @@ import {
   invalidateAvailabilityCache,
 } from "@/lib/availability";
 import {
+  MAX_PARTY_SIZE,
+  REQUEST_RATE_LIMIT_COUNT,
+  REQUEST_RATE_LIMIT_WINDOW_MS,
   minBookableStart,
   moscowDateTime,
   parseVirtualSlotId,
-  paymentHoldExpiresAt,
   slotEndTime,
 } from "@/lib/booking-policy";
 import { invalidateAdminData, invalidateUserBookingData } from "@/lib/cache";
-import { markBookingPaid } from "@/lib/payments/complete-booking";
+import { notifyManagerBookingRequest } from "@/lib/mail/notify-manager-request";
+import { toRuPhoneE164, extractRuPhoneDigits } from "@/lib/ru-phone";
 import { dbUrgent } from "@/lib/prisma";
-import {
-  clearPendingHold,
-  clearPendingHoldMemory,
-  markPendingHold,
-} from "@/lib/pending-hold";
 import { Prisma } from "@/generated/prisma";
 
 export type SlotOption = {
@@ -45,12 +43,8 @@ function parseMoscowDay(dateStr: string): { from: Date; to: Date } | null {
   };
 }
 
+/** Слоты доступны без авторизации (время = пожелание, REQUEST не блокирует). */
 export async function getAvailableSlots(questId: string, dateStr: string) {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "USER") {
-    return { error: "Войдите как клиент, чтобы увидеть доступные слоты." as const };
-  }
-
   const bounds = parseMoscowDay(dateStr);
   if (!bounds) {
     return { error: "Некорректная дата." as const };
@@ -76,23 +70,63 @@ export async function getAvailableSlots(questId: string, dateStr: string) {
   return { slots };
 }
 
+export type CreateBookingRequestInput = {
+  slotId: string;
+  name: string;
+  phone: string;
+  partySize: number;
+  email?: string;
+};
+
 /**
- * Одна round-trip операция к БД (CTE). Interactive $transaction + куча SELECT
- * на Supabase pooler давали 10–30с и Connection terminated.
+ * Заявка на созвон: слот не блокируется, холда нет.
+ * Гости и залогиненные клиенты.
  */
-export async function createBooking(slotId: string) {
+export async function createBookingRequest(input: CreateBookingRequestInput) {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "USER") {
-    return { error: "Для бронирования необходимо войти как клиент." };
+  if (
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "OWNER"
+  ) {
+    return { error: "Заявки оставляют клиенты. Войдите как пользователь или выйдите." };
   }
 
-  const userId = session.user.id;
+  const name = input.name?.trim() ?? "";
+  if (name.length < 2) {
+    return { error: "Укажите имя (минимум 2 символа)." };
+  }
+  if (name.length > 80) {
+    return { error: "Слишком длинное имя." };
+  }
+
+  const phone = toRuPhoneE164(extractRuPhoneDigits(input.phone ?? ""));
+  if (!phone) {
+    return { error: "Укажите полный мобильный номер: +7 (9XX) XXX-XX-XX" };
+  }
+
+  const partySize = Number(input.partySize);
+  if (
+    !Number.isInteger(partySize) ||
+    partySize < 1 ||
+    partySize > MAX_PARTY_SIZE
+  ) {
+    return { error: `Число людей — от 1 до ${MAX_PARTY_SIZE}.` };
+  }
+
+  const emailRaw = input.email?.trim() || session?.user?.email?.trim() || "";
+  const email =
+    emailRaw && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw) ? emailRaw : null;
+  if (emailRaw && !email) {
+    return { error: "Некорректный email." };
+  }
+
+  const userId =
+    session?.user?.id && session.user.role === "USER"
+      ? session.user.id
+      : null;
+
   const now = new Date();
-
-  // Правда только в SQL ниже (с очисткой просроченных PENDING).
-  clearPendingHoldMemory(userId);
-
-  const virtual = parseVirtualSlotId(slotId);
+  const virtual = parseVirtualSlotId(input.slotId);
 
   let questId: string;
   let startTime: Date;
@@ -105,12 +139,12 @@ export async function createBooking(slotId: string) {
   } else {
     const existing = await dbUrgent((prisma) =>
       prisma.slot.findUnique({
-        where: { id: slotId },
+        where: { id: input.slotId },
         select: { questId: true, startTime: true, endTime: true },
       })
     );
     if (!existing) {
-      return { error: "Этот слот уже недоступен." };
+      return { error: "Выбранное время недоступно. Выберите слот заново." };
     }
     questId = existing.questId;
     startTime = existing.startTime;
@@ -119,41 +153,34 @@ export async function createBooking(slotId: string) {
 
   if (startTime.getTime() < minBookableStart(now).getTime()) {
     return {
-      error: "Этот слот слишком близко по времени — запись минимум за 3 часа.",
+      error: "Это время слишком близко — запись минимум за 3 часа.",
+    };
+  }
+
+  const windowStart = new Date(now.getTime() - REQUEST_RATE_LIMIT_WINDOW_MS);
+  const recentCount = await dbUrgent((prisma) =>
+    prisma.booking.count({
+      where: {
+        contactPhone: phone,
+        createdAt: { gte: windowStart },
+        status: { in: ["REQUEST", "CANCELLED"] },
+      },
+    })
+  );
+  if (recentCount >= REQUEST_RATE_LIMIT_COUNT) {
+    return {
+      error:
+        "Слишком много заявок с этого номера. Подождите немного или дождитесь звонка менеджера.",
     };
   }
 
   const bookingId = randomUUID();
   const slotInsertId = randomUUID();
-  const expiresAt = paymentHoldExpiresAt(now);
-  // Явный UTC ISO — иначе pg/adapter пишет «локальные» часы как timestamptz и холд живёт часами.
-  const expiresAtIso = expiresAt.toISOString();
 
   try {
-    // Один round-trip: погасить просроченные/битые холды + создать бронь.
     const rows = await dbUrgent((prisma) =>
-      prisma.$queryRaw<{ id: string | null; code: string; replacedCount: number }[]>`
-        WITH cleared AS (
-          -- Политика: у клиента один активный PENDING-холд.
-          -- Новая бронь снимает предыдущий холд (оплаченные PAID не трогаем).
-          UPDATE "Booking"
-          SET status = 'CANCELLED'::"BookingStatus",
-              "expiresAt" = NULL,
-              "updatedAt" = NOW()
-          WHERE "userId" = ${userId}
-            AND status = 'PENDING'::"BookingStatus"
-          RETURNING id
-        ),
-        blocked AS (
-          SELECT b.id
-          FROM "Booking" b
-          INNER JOIN "Slot" s ON s.id = b."slotId"
-          WHERE b.status = 'PAID'::"BookingStatus"
-            AND s."startTime" < ${endTime}
-            AND s."endTime" > ${startTime}
-          LIMIT 1
-        ),
-        slot AS (
+      prisma.$queryRaw<{ id: string | null; code: string }[]>`
+        WITH slot AS (
           INSERT INTO "Slot" (
             id, "startTime", "endTime", "isBooked", "questId", price, "createdAt", "updatedAt"
           )
@@ -174,18 +201,23 @@ export async function createBooking(slotId: string) {
         ),
         ins AS (
           INSERT INTO "Booking" (
-            id, "userId", "slotId", status, "expiresAt", "createdAt", "updatedAt"
+            id, "userId", "slotId", status, "expiresAt",
+            "contactName", "contactPhone", "partySize", "contactEmail",
+            "createdAt", "updatedAt"
           )
           SELECT
             ${bookingId},
             ${userId},
             slot.id,
-            'PENDING'::"BookingStatus",
-            ${expiresAtIso}::timestamptz,
+            'REQUEST'::"BookingStatus",
+            NULL,
+            ${name},
+            ${phone},
+            ${partySize},
+            ${email},
             NOW(),
             NOW()
           FROM slot
-          WHERE NOT EXISTS (SELECT 1 FROM blocked)
           RETURNING id
         )
         SELECT
@@ -193,9 +225,8 @@ export async function createBooking(slotId: string) {
           CASE
             WHEN EXISTS (SELECT 1 FROM ins) THEN 'OK'
             WHEN NOT EXISTS (SELECT 1 FROM slot) THEN 'NO_QUEST'
-            ELSE 'SLOT_TAKEN'
-          END AS code,
-          (SELECT COUNT(*)::int FROM cleared) AS "replacedCount"
+            ELSE 'FAIL'
+          END AS code
       `
     );
 
@@ -204,77 +235,76 @@ export async function createBooking(slotId: string) {
       if (row?.code === "NO_QUEST") {
         return { error: "Квест не найден." };
       }
-      return { error: "Этот слот уже недоступен." };
+      return { error: "Не удалось отправить заявку. Попробуйте ещё раз." };
     }
 
-    await markPendingHold(userId, expiresAt);
-    invalidateAvailabilityCache();
+    void notifyManagerBookingRequest(row.id, "created");
+
+    // REQUEST не занимает сетку — кэш занятости можно не трогать, но админку обновим.
     revalidatePath("/");
     revalidatePath("/bookings");
     revalidatePath("/admin");
-    invalidateUserBookingData(userId);
+    revalidatePath("/profile");
+    if (userId) invalidateUserBookingData(userId);
     invalidateAdminData();
+
     return {
       success: true as const,
       bookingId: row.id,
-      expiresAt: expiresAt.toISOString(),
-      replacedPreviousHold: (row.replacedCount ?? 0) > 0,
+      preferredStart: startTime.toISOString(),
     };
   } catch (e) {
-    console.error("[createBooking]", e);
+    console.error("[createBookingRequest]", e);
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      return { error: "Не удалось оформить бронирование. Попробуйте еще раз." };
+      return { error: "Не удалось отправить заявку. Попробуйте ещё раз." };
     }
-    return { error: "Не удалось оформить бронирование. Попробуйте еще раз." };
+    return { error: "Не удалось отправить заявку. Попробуйте ещё раз." };
   }
 }
 
-export async function completeMockPayment(bookingId: string) {
+/** Отмена своей заявки (только авторизованный клиент) + письмо менеджеру. */
+export async function cancelBookingRequest(bookingId: string) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "USER") {
-    return { error: "Для оплаты нужно войти как пользователь." };
+    return { error: "Войдите, чтобы отменить заявку." };
   }
 
-  const now = new Date();
-  const gate = await dbUrgent(async (prisma) => {
-    await prisma.booking.updateMany({
-      where: {
-        userId: session.user!.id,
-        status: "PENDING",
-        expiresAt: { lte: now },
-      },
+  const userId = session.user.id;
+
+  const result = await dbUrgent(async (prisma) => {
+    const booking = await prisma.booking.findFirst({
+      where: { id: bookingId, userId },
+      select: { id: true, status: true },
+    });
+    if (!booking) return { error: "Заявка не найдена." as const };
+    if (booking.status === "CANCELLED") {
+      return { success: true as const, already: true as const };
+    }
+    if (booking.status !== "REQUEST" && booking.status !== "PENDING") {
+      return { error: "Эту бронь нельзя отменить здесь." as const };
+    }
+
+    await prisma.booking.update({
+      where: { id: bookingId },
       data: { status: "CANCELLED", expiresAt: null },
     });
 
-    const booking = await prisma.booking.findFirst({
-      where: { id: bookingId, userId: session.user!.id },
-      select: { id: true, status: true, expiresAt: true },
-    });
-    if (!booking) return { error: "Бронирование не найдено." as const };
-    if (booking.status === "CANCELLED") {
-      return { error: "Бронирование отменено или холд истёк." as const };
-    }
-    if (
-      booking.status === "PENDING" &&
-      booking.expiresAt &&
-      booking.expiresAt.getTime() <= now.getTime()
-    ) {
-      return { error: "Время на оплату истекло. Выберите слот заново." as const };
-    }
-    return { ok: true as const };
+    return { success: true as const, already: false as const };
   });
 
-  if ("error" in gate) return gate;
+  if ("error" in result) return result;
 
-  const marked = await markBookingPaid(bookingId, `mock_${Date.now()}`);
-  if (!marked.ok) {
-    return { error: "Не удалось подтвердить оплату." };
+  if (!result.already) {
+    void notifyManagerBookingRequest(bookingId, "cancelled");
   }
 
-  await clearPendingHold(session.user.id);
   invalidateAvailabilityCache();
-  revalidatePath("/profile");
+  invalidateUserBookingData(userId);
+  invalidateAdminData();
+  revalidatePath("/");
   revalidatePath("/bookings");
+  revalidatePath("/profile");
   revalidatePath("/admin");
-  return { success: true as const };
+
+  return { success: true as const, already: result.already };
 }

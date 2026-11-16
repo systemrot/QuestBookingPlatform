@@ -48,6 +48,7 @@ services:
       SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./static-verify:/srv/static-verify:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

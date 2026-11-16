@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { BookingStatusBadge } from "@/components/booking-status";
+import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { PayBookingButton } from "@/components/profile/pay-booking-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ function isCancelled(status: string) {
 }
 
 function isActive(status: string) {
-  return status === "PENDING" || status === "PAID";
+  return status === "REQUEST" || status === "PENDING" || status === "PAID";
 }
 
 type Props = {
@@ -293,10 +294,14 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
                     <p className="mt-1 text-sm text-muted-foreground">
                       {formatRu(new Date(booking.slot.startTime), "d MMM yyyy, HH:mm")}
                     </p>
-                    {booking.status === "PENDING" ? (
+                    {booking.status === "REQUEST" ||
+                    booking.status === "PENDING" ? (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <PayBookingButton bookingId={booking.id} />
-                        {booking.expiresAt ? (
+                        <CancelBookingButton bookingId={booking.id} />
+                        {booking.status === "PENDING" ? (
+                          <PayBookingButton bookingId={booking.id} />
+                        ) : null}
+                        {booking.status === "PENDING" && booking.expiresAt ? (
                           <span className="text-[11px] text-muted-foreground">
                             до {formatRu(new Date(booking.expiresAt), "HH:mm")}
                           </span>
@@ -367,10 +372,14 @@ export function ProfileBookingsPanel({ bookings: initial }: Props) {
                       <BookingStatusBadge status={booking.status} />
                     </TableCell>
                     <TableCell>
-                      {booking.status === "PENDING" ? (
+                      {booking.status === "REQUEST" ||
+                      booking.status === "PENDING" ? (
                         <div className="flex flex-col items-start gap-1">
-                          <PayBookingButton bookingId={booking.id} />
-                          {booking.expiresAt ? (
+                          <CancelBookingButton bookingId={booking.id} />
+                          {booking.status === "PENDING" ? (
+                            <PayBookingButton bookingId={booking.id} />
+                          ) : null}
+                          {booking.status === "PENDING" && booking.expiresAt ? (
                             <span className="text-[11px] text-muted-foreground">
                               до {formatRu(new Date(booking.expiresAt), "HH:mm")}
                             </span>

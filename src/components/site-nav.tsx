@@ -194,7 +194,7 @@ function AuthNav({ user }: { user: SessionUser }) {
       <div className="hidden items-center gap-2 lg:flex">
         {user.role === "USER" && (
           <>
-            <NavLink href="/bookings">Мои бронирования</NavLink>
+            <NavLink href="/bookings">Мои заявки</NavLink>
             <NavLink href="/profile">Профиль</NavLink>
           </>
         )}
@@ -233,12 +233,12 @@ function AuthNav({ user }: { user: SessionUser }) {
           open={open}
           onOpenChange={setOpen}
           title={labelName}
-          description="Бронирования, профиль и выход"
+          description="Заявки, профиль и выход"
         >
           {user.role === "USER" && (
             <>
               <Link href="/bookings" onClick={close} className={sheetItemClass}>
-                Мои бронирования
+                Мои заявки
               </Link>
               <Link href="/profile" onClick={close} className={sheetItemClass}>
                 Профиль

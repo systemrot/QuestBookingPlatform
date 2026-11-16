@@ -7,6 +7,10 @@ const userBookingSelect = {
   expiresAt: true,
   createdAt: true,
   paymentId: true,
+  contactName: true,
+  contactPhone: true,
+  contactEmail: true,
+  partySize: true,
   slot: {
     select: {
       startTime: true,

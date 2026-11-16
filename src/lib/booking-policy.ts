@@ -22,8 +22,15 @@ export const BOOKING_HORIZON_DAYS = 14;
 /** Нельзя взять слот, если до старта меньше этого. */
 export const MIN_NOTICE_HOURS = 3;
 
-/** PENDING держит слот и должен быть оплачен за это время. */
+/** PENDING держит слот и должен быть оплачен за это время (legacy / будущее). */
 export const PAYMENT_HOLD_MINUTES = 20;
+
+/** Максимум людей в заявке (инпут формы). */
+export const MAX_PARTY_SIZE = 20;
+
+/** Антиспам: сколько заявок с одного телефона за окно. */
+export const REQUEST_RATE_LIMIT_COUNT = 3;
+export const REQUEST_RATE_LIMIT_WINDOW_MS = 30 * 60_000;
 
 export type MoscowParts = {
   year: number;
@@ -189,7 +196,11 @@ export function rangesOverlap(
   return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
 }
 
-/** Активный холд или оплата блокирует слот. */
+/**
+ * Что блокирует слот в сетке.
+ * REQUEST — только заявка, слот не держит.
+ * PENDING — legacy-холд под оплату.
+ */
 export function isBookingBlocking(
   status: string,
   expiresAt: Date | null | undefined,
@@ -197,7 +208,7 @@ export function isBookingBlocking(
 ): boolean {
   if (status === "PAID") return true;
   if (status === "PENDING") {
-    if (!expiresAt) return true; // старые записи без TTL — считаем активными до чистки
+    if (!expiresAt) return true;
     return expiresAt.getTime() > now.getTime();
   }
   return false;
@@ -208,7 +219,7 @@ export function resolveBookingStatus(
   status: string,
   expiresAt: Date | null | undefined,
   now: Date = new Date()
-): "PENDING" | "PAID" | "CANCELLED" | string {
+): "REQUEST" | "PENDING" | "PAID" | "CANCELLED" | string {
   if (status === "PENDING" && expiresAt && expiresAt.getTime() <= now.getTime()) {
     return "CANCELLED";
   }

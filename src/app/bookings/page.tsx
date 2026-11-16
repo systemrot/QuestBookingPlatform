@@ -3,16 +3,12 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { BookingStatusBadge } from "@/components/booking-status";
+import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { PayBookingButton } from "@/components/profile/pay-booking-button";
-import { SyncPendingHold } from "@/components/sync-pending-hold";
 import { resolveBookingStatus } from "@/lib/booking-policy";
 import { getUserBookings } from "@/lib/data";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { formatRub, formatRu } from "@/lib/locale";
-import {
-  clearPendingHoldMemory,
-  rememberPendingHoldMemory,
-} from "@/lib/pending-hold";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -36,28 +32,14 @@ export default async function BookingsPage() {
     status: resolveBookingStatus(b.status, b.expiresAt, now),
   }));
 
-  // Cookie нельзя писать из Server Component — только память процесса + SyncPendingHold на клиенте.
-  const pending = bookings.find((b) => b.status === "PENDING" && b.expiresAt);
-  if (pending?.expiresAt) {
-    rememberPendingHoldMemory(userId, pending.expiresAt);
-  } else {
-    clearPendingHoldMemory(userId);
-  }
-
-  const pendingExpiresIso = pending?.expiresAt
-    ? pending.expiresAt.toISOString()
-    : null;
-
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12 sm:px-6">
-      <SyncPendingHold expiresAtIso={pendingExpiresIso} />
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold">Мои бронирования</h1>
+          <h1 className="font-heading text-2xl font-semibold">Мои заявки</h1>
           <p className="text-sm text-muted-foreground">
-            Неоплаченная бронь держит слот 20 минут. Одновременно активен один
-            холд — новая бронь заменяет предыдущую. После оплаты депозита время
-            закреплено за вами.
+            Заявка — пожелание по времени. Менеджер свяжется с вами для
+            подтверждения. Отменить заявку можно до звонка.
           </p>
         </div>
         <Link
@@ -71,9 +53,9 @@ export default async function BookingsPage() {
       {bookings.length === 0 ? (
         <Card className="border-dashed border-border/80 bg-muted/20">
           <CardHeader>
-            <CardTitle className="text-base">Бронирований пока нет</CardTitle>
+            <CardTitle className="text-base">Заявок пока нет</CardTitle>
             <CardDescription>
-              Выберите квест на главной странице и забронируйте свободный слот.
+              Выберите квест на главной и оставьте заявку с удобным временем.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -95,8 +77,7 @@ export default async function BookingsPage() {
                         : b.slot.quest.title}
                     </CardTitle>
                     <CardDescription>
-                      {formatRu(b.slot.startTime, "EEE, d MMMM, HH:mm")}{" "}
-                      –{" "}
+                      {formatRu(b.slot.startTime, "EEE, d MMMM, HH:mm")} –{" "}
                       {formatRu(b.slot.endTime, "HH:mm")}
                     </CardDescription>
                   </div>
@@ -104,10 +85,19 @@ export default async function BookingsPage() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
-                    Стоимость слота{" "}
+                    Ориентир по цене{" "}
                     <span className="font-medium text-foreground">
                       {formatRub(Number(b.slot.price))}
                     </span>
+                    {typeof b.partySize === "number" ? (
+                      <>
+                        {" "}
+                        · людей:{" "}
+                        <span className="font-medium text-foreground">
+                          {b.partySize}
+                        </span>
+                      </>
+                    ) : null}
                     {b.status === "PENDING" && b.expiresAt ? (
                       <>
                         {" "}
@@ -118,9 +108,14 @@ export default async function BookingsPage() {
                       </>
                     ) : null}
                   </p>
-                  {b.status === "PENDING" ? (
-                    <PayBookingButton bookingId={b.id} />
-                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {b.status === "REQUEST" || b.status === "PENDING" ? (
+                      <CancelBookingButton bookingId={b.id} />
+                    ) : null}
+                    {b.status === "PENDING" ? (
+                      <PayBookingButton bookingId={b.id} />
+                    ) : null}
+                  </div>
                 </CardContent>
               </Card>
             </li>

@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const statusConfig = {
+  REQUEST: { variant: "secondary" as const, label: "Ожидает звонка" },
   PENDING: { variant: "secondary" as const, label: "Ожидает оплаты" },
   PAID: { variant: "success" as const, label: "Оплачено" },
   CANCELLED: { variant: "outline" as const, label: "Отменено" },
