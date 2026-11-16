@@ -69,7 +69,7 @@ export function EditProfileDialog({ name, age, phone }: Props) {
           </div>
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
           {state?.success && <p className="text-sm text-primary">Сохранено. Можно закрыть окно.</p>}
-          <DialogFooter className="border-t-0 bg-transparent p-0 pt-2">
+          <DialogFooter className="mx-0 mb-0 border-t-0 bg-transparent p-0 pt-2">
             <Button type="submit" disabled={pending}>
               {pending ? "Сохраняем..." : "Сохранить"}
             </Button>
