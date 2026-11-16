@@ -25,7 +25,7 @@ export async function markBookingPaid(bookingId: string, paymentId: string | nul
       return { ok: false as const, reason: "not_found" as const };
     }
     if (booking.status === "PAID") {
-      clearPendingHoldMemory(booking.userId);
+      if (booking.userId) clearPendingHoldMemory(booking.userId);
       return { ok: true as const, already: true as const };
     }
     if (booking.expiresAt && booking.expiresAt.getTime() <= now.getTime()) {
