@@ -205,8 +205,10 @@ export async function adminExtendHold(bookingId: string) {
 
   if ("error" in result) return result;
 
-  rememberPendingHoldMemory(result.userId, result.expiresAt);
-  invalidateUserBookingData(result.userId);
+  if (result.userId) {
+    rememberPendingHoldMemory(result.userId, result.expiresAt);
+    invalidateUserBookingData(result.userId);
+  }
   invalidateAdminData();
   revalidatePath("/admin");
   revalidatePath("/bookings");
