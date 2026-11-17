@@ -23,7 +23,7 @@ export function CitySuggestBanner({ suggestedSlug, suggestedName }: Props) {
         toast.error(res.error);
         return;
       }
-      router.refresh();
+      router.push(`/${suggestedSlug}`);
     });
   };
 

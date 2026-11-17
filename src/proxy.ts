@@ -22,11 +22,15 @@ export const proxy = auth((req) => {
     const hasCityPref = isCitySlug(cookieCity ?? "");
     const slug = hasCityPref ? cookieCity! : "oryol";
     // No cookie (Googlebot / first visit): 301 → default city so `/` consolidates in search.
-    // With cookie: 307 → chosen city (must not be cached as permanent for the wrong city).
-    return NextResponse.redirect(
+    // With cookie: 307 → chosen city. Always Vary + no-store so a prior redirect
+    // (e.g. old 308→smolensk) is not reused after qb_city changes.
+    const res = NextResponse.redirect(
       new URL(`/${slug}`, req.url),
       hasCityPref ? 307 : 301
     );
+    res.headers.set("Vary", "Cookie");
+    res.headers.set("Cache-Control", "private, no-store");
+    return res;
   }
 
   // City preference is written only by selectCity / CityNavLink — never here.
