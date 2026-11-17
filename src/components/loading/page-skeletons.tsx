@@ -99,11 +99,10 @@ function CatalogCardSkeleton() {
             <Skeleton className="h-3.5 w-full bg-white/10" />
             <Skeleton className="h-3.5 w-5/6 bg-white/10" />
           </div>
-          <div className="mt-auto flex items-center bg-[oklch(0.1_0.012_25)] px-4 pb-6 pt-2 pr-16 sm:pb-7 sm:pr-20">
+          <div className="mt-auto flex items-center bg-[oklch(0.1_0.012_25)] px-4 pb-6 pt-2 sm:pb-7">
             <Skeleton className="h-11 w-[10.75rem] rounded-md bg-white/12" />
           </div>
         </div>
-        <Skeleton className="absolute -bottom-3 -right-3 z-20 size-[6.75rem] rotate-[8deg] rounded-md bg-white/10 sm:-bottom-2 sm:-right-4 sm:size-[8rem] sm:rotate-[10deg]" />
       </div>
     </li>
   );

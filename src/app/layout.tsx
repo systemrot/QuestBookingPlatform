@@ -21,14 +21,13 @@ const siteUrl = getSiteUrl();
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin", "cyrillic"],
-  // Body: show immediately — system sans is close enough until Montserrat arrives.
   display: "swap",
   preload: true,
 });
 
 /**
- * Brush display (brand / hero). `block` avoids a flash of system UI font;
- * woff2 keeps the invisible window short (~4× smaller than the old OTF).
+ * Brush display (brand / hero). `block` + preload → on normal nets first paint
+ * is already Rhythmic (no Montserrat flash). Fallback stack = Montserrat, not Arial.
  */
 const rhythmic = localFont({
   src: "./fonts/Rhythmic-Cyrillic.woff2",
@@ -37,25 +36,25 @@ const rhythmic = localFont({
   weight: "400",
   style: "normal",
   preload: true,
-  adjustFontFallback: "Arial",
+  adjustFontFallback: false,
 });
 
-/** Kept as fallback while comparing display faces. */
+/** Kept as CSS variable for experiments; not in the live display stack. */
 const unutterable = localFont({
   src: "./fonts/Unutterable-Italic.woff2",
   variable: "--font-unutterable",
-  display: "block",
+  display: "swap",
   weight: "400",
   style: "normal",
   preload: false,
-  adjustFontFallback: "Arial",
+  adjustFontFallback: false,
 });
 
 const rubikDirt = Rubik_Dirt({
   variable: "--font-rubik-dirt",
   weight: "400",
   subsets: ["latin", "cyrillic"],
-  display: "block",
+  display: "swap",
   preload: false,
 });
 

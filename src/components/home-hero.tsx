@@ -24,7 +24,7 @@ type HomeHeroProps = {
   catalogCount?: number;
   /** URL city wins over cookie so /smolensk label matches catalog. */
   citySlug?: CitySlug;
-  /** Geo H2 above the grid, e.g. «Квесты в Орле». */
+  /** H2 above the grid. */
   catalogLabel?: string;
 };
 
@@ -67,7 +67,7 @@ export async function HomeHero({
           <div className="home-split-brand">
             <CityHomeLink
               fallbackSlug={currentSlug}
-              className="shrink-0 font-display text-[1.2rem] uppercase tracking-[0.04em] text-white [text-shadow:0_0_18px_rgba(220,38,38,0.35)] sm:text-xl"
+              className="shrink-0 font-display text-[1.35rem] uppercase tracking-[0.04em] text-white [text-shadow:0_0_18px_rgba(220,38,38,0.35)] sm:text-[1.55rem]"
             >
               {siteConfig.brandName}
             </CityHomeLink>

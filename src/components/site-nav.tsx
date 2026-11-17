@@ -108,7 +108,8 @@ function NavLinkLabel({
 }
 
 const menuToggleClass = cn(
-  "inline-flex size-14 shrink-0 items-center justify-center rounded-md",
+  /* size-14 tap target; negative margin so it doesn’t fatten the mobile bar */
+  "inline-flex size-14 shrink-0 items-center justify-center rounded-md -my-1.5",
   "text-white/90 transition-colors hover:bg-white/10 hover:text-white",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60"
 );
@@ -125,7 +126,7 @@ function GuestNav() {
 
   return (
     <>
-      <div className="hidden items-center gap-2 lg:flex">
+      <div className="hidden items-center gap-5 overflow-visible lg:flex">
         <NavLink href="/login" prefetch>
           Войти
         </NavLink>
@@ -191,15 +192,23 @@ function AuthNav({ user }: { user: SessionUser }) {
 
   return (
     <>
-      <div className="hidden items-center gap-2 lg:flex">
+      <div className="home-split-auth-nav hidden min-w-0 max-w-full items-center gap-2 lg:flex">
         {user.role === "USER" && (
           <>
-            <NavLink href="/bookings">Мои заявки</NavLink>
-            <NavLink href="/profile">Профиль</NavLink>
+            <NavLink href="/bookings" className="text-base">
+              Мои заявки
+            </NavLink>
+            <NavLink href="/profile" className="text-base">
+              Профиль
+            </NavLink>
           </>
         )}
-        {isStaff(user.role) && <NavLink href="/admin">Админка</NavLink>}
-        <span className="hidden max-w-[10rem] truncate text-xs text-muted-foreground xl:inline">
+        {isStaff(user.role) && (
+          <NavLink href="/admin" className="text-base">
+            Админка
+          </NavLink>
+        )}
+        <span className="hidden max-w-[10rem] truncate text-[0.9375rem] text-muted-foreground xl:inline">
           {user.name ?? user.email}
         </span>
         <SignOutButton />

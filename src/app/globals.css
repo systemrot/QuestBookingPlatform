@@ -9,7 +9,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-montserrat);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-rhythmic), var(--font-unutterable), var(--font-rubik-dirt), var(--font-montserrat), sans-serif;
+  /* Brush first; if block period ends → Montserrat (quest titles), not system UI */
+  --font-display: var(--font-rhythmic), var(--font-montserrat), sans-serif;
   /* UI headings (admin, cards, forms) — not the brush display face */
   --font-heading: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --color-blood: var(--blood);
@@ -253,6 +254,8 @@ body:has([data-home-split-root]) main {
   --home-split-left: 37%;
   --home-knife-hang: 4rem;
   --home-top-h: 3.35rem;
+  /* Main pad + inset so register brush lines up with catalog edge */
+  --home-align-right: calc(2.4rem + 2.25rem - 2px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -388,6 +391,8 @@ body:has([data-home-split-root]) main {
   align-items: center;
   min-height: var(--home-top-h);
   pointer-events: none;
+  padding-right: var(--home-align-right);
+  box-sizing: border-box;
 }
 
 .home-split-brand,
@@ -404,9 +409,60 @@ body:has([data-home-split-root]) main {
   padding-left: 1.35rem;
 }
 
+/* Desktop: pull brand off the left edge and make logo/city readable */
+@media (min-width: 1024px) {
+  .home-split-brand {
+    padding-left: 6.65rem;
+    gap: 0.9rem;
+  }
+
+  .home-split-brand a.font-display {
+    font-size: 2.15rem;
+    letter-spacing: 0.05em;
+    text-shadow:
+      0 0 22px rgba(220, 38, 38, 0.42),
+      0 1px 2px rgba(0, 0, 0, 0.75);
+  }
+
+  .home-split-brand [data-slot="select-trigger"] {
+    height: 2.1rem;
+    width: 9.75rem;
+    padding-inline: 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .home-split-brand [data-slot="select-trigger"] svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+}
+
 .home-split-nav {
   justify-content: flex-end;
-  padding-right: 1.5rem;
+  /* Right inset comes from .home-split-top.
+     min-width:0 — wide auth row (Админка + name + Выйти) must not
+     blow the grid track past --home-align-right. */
+  min-width: 0;
+  padding-right: 0;
+  overflow: visible;
+}
+
+.home-split-nav > nav {
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
+}
+
+/* Auth row is flush to the pad edge; logout stroke reads past the catalog.
+   Guest «Регистрация» brush already sits optically inset — nudge auth only. */
+.home-split-nav:has(.home-split-auth-nav) {
+  padding-right: 2.5rem;
+}
+
+.home-split-nav .home-split-auth-nav {
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .home-split-stage {
@@ -423,7 +479,7 @@ body:has([data-home-split-root]) main {
 /* Character is % of the full scenic plate — stays glued to the cabin */
 .home-split-character {
   position: absolute;
-  left: -7%;
+  left: -4.5%;
   width: 58%;
   /* Full hero height — no footer eating the frame */
   top: 2%;
@@ -540,9 +596,11 @@ body:has([data-home-split-root]) main {
   max-width: 100%;
   /* Shift content left toward the character — close the empty gap */
   margin-left: -3.75rem;
-  /* Align block with the character’s head, nudged slightly down */
-  padding: calc(var(--home-top-h) + 2.1rem) 1.15rem 1.25rem 0;
+  /* Align block with the character’s head, nudged slightly down.
+     Extra right pad = prop hang room (not a catalog-only gutter). */
+  padding: calc(var(--home-top-h) + 2.1rem) 2.4rem 1.25rem 0;
   background: transparent;
+  overflow-x: visible;
 }
 
 .home-split-main > * {
@@ -595,6 +653,12 @@ body:has([data-home-split-root]) main {
   font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
 }
 
+@media (min-width: 1024px) {
+  .home-split-eyebrow {
+    font-size: 0.8rem;
+  }
+}
+
 .home-split-eyebrow-accent {
   color: var(--blood-hot);
   text-shadow:
@@ -631,7 +695,7 @@ body:has([data-home-split-root]) main {
   position: relative;
   z-index: 16;
   min-width: 0;
-  padding: 0 1.15rem 0.25rem 0;
+  padding: 0 var(--home-align-right) 0.25rem 0;
 }
 
 .home-split-city-seo {
@@ -644,15 +708,15 @@ body:has([data-home-split-root]) main {
   /* No border-top here — full-bleed row would draw it under the character */
 }
 
-/* Red rule aligned with the catalog card row (not full site, not text-only). */
+/* Red rule — right edge matches cards (parent pad = --home-align-right) */
 .home-split-city-seo::after {
   content: "";
   position: absolute;
   top: 0;
   left: var(--seo-text-inset);
+  right: 0;
   z-index: 2;
-  /* Same span as #catalog in the main column */
-  width: calc(100% - var(--home-split-left) - 1.15rem);
+  width: auto;
   height: 1px;
   pointer-events: none;
   background: rgba(220, 38, 38, 0.28);
@@ -1019,8 +1083,10 @@ body:has([data-home-split-root]) main {
 }
 
 .home-split #catalog {
-  overflow-x: clip;
+  /* Visible so corner props can hang into main’s right pad (no extra catalog gutter) */
+  overflow-x: visible;
   max-width: 100%;
+  padding-bottom: 0.75rem;
 }
 
 .home-split #catalog > ul {
@@ -1051,6 +1117,10 @@ body:has([data-home-split-root]) main {
 }
 
 @media (max-width: 1023px) {
+  .home-split {
+    --home-top-h: 2.85rem;
+  }
+
   .home-split-hero {
     --home-split-left: 100%;
     --home-knife-hang: 0rem;
@@ -1088,8 +1158,13 @@ body:has([data-home-split-root]) main {
     gap: 0.5rem;
     width: 100%;
     box-sizing: border-box;
+    /* Fixed thinner chrome — controls may overflow vertically, bar stays slim */
+    height: calc(var(--home-top-h) + env(safe-area-inset-top, 0px));
     min-height: calc(var(--home-top-h) + env(safe-area-inset-top, 0px));
     padding-top: env(safe-area-inset-top, 0px);
+    /* Desktop align-right does not apply to the compact mobile chrome */
+    padding-right: 0;
+    overflow: visible;
     background: rgba(8, 5, 5, 0.92);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
@@ -1100,14 +1175,21 @@ body:has([data-home-split-root]) main {
     justify-content: flex-start;
     flex: 1 1 auto;
     min-width: 0;
-    padding: 0.45rem 0.25rem 0.45rem 1rem;
+    min-height: 0;
+    height: var(--home-top-h);
+    padding: 0 0.25rem 0 1rem;
+    gap: 0.65rem;
+    overflow: visible;
   }
 
   .home-split-nav {
     justify-content: flex-end;
     flex: 0 0 auto;
     min-width: 0;
-    padding: 0.25rem 0.55rem 0.25rem 0;
+    min-height: 0;
+    height: var(--home-top-h);
+    padding: 0 0.55rem 0 0;
+    overflow: visible;
   }
 
   .home-split-scene {
@@ -1234,7 +1316,8 @@ body:has([data-home-split-root]) main {
 
   .home-split-city-seo::after {
     left: 0;
-    width: 100%;
+    right: 0;
+    width: auto;
   }
 
   .home-split-city-seo::before {
@@ -1412,6 +1495,7 @@ body:has([data-home-split-root]) main {
   .home-split {
     --home-split-left: 37%;
     --home-knife-hang: 4.25rem;
+    --home-align-right: calc(2.65rem + 2.25rem - 2px);
   }
 
   .home-split-hero {
@@ -1421,14 +1505,14 @@ body:has([data-home-split-root]) main {
   .home-split-main {
     margin-left: -4.25rem;
     padding-top: calc(var(--home-top-h) + 2.35rem);
-    padding-right: 1.4rem;
+    padding-right: 2.65rem;
     padding-bottom: 0.6rem;
     padding-left: 0;
     gap: 1.45rem;
   }
 
   .home-split-character {
-    left: -7%;
+    left: -4.5%;
     width: 58%;
     top: 1%;
     bottom: -4%;
@@ -1439,6 +1523,7 @@ body:has([data-home-split-root]) main {
   .home-split {
     --home-split-left: 36%;
     --home-knife-hang: 4.5rem;
+    --home-align-right: calc(2.65rem + 2.25rem - 2px);
   }
 
   .home-split-main {
@@ -1603,17 +1688,35 @@ body:has([data-home-split-root]) main {
 }
 
 .btn-blood-brush--register {
-  --brush-mask: url("/brand/ui/mask-register-v3.png");
-  --brush-inset: -16% -5% -14% -6%;
-  min-height: 2.25rem !important;
-  padding: 0.4rem 1.2rem 0.38rem !important;
+  /* Tip PNG: left/right ends intact, middle shortened */
+  --brush-mask: url("/brand/ui/mask-register-tip.png?v=8");
+  --brush-inset: -12% 0% -10% -8%;
+  min-height: 2.15rem !important;
+  /* More right pad / less left → label sits left of mask center */
+  padding: 0.38rem 2.85rem 0.38rem 0.4rem !important;
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   line-height: 1 !important;
+  justify-content: center;
+  overflow: visible;
+}
+
+.btn-blood-brush--register > span {
+  position: relative;
+  transform: translateX(-0.5rem);
+}
+
+.btn-blood-brush--register::before {
+  -webkit-mask-size: 100% 128%;
+  mask-size: 100% 128%;
+  -webkit-mask-position: 50% 48%;
+  mask-position: 50% 48%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .btn-blood-brush--masked {
-  --brush-mask: url("/brand/ui/mask-register-v3.png");
+  --brush-mask: url("/brand/ui/mask-catalog-v2.png");
 }
 
 /* Real SVG drips — tiny seeds; only --live run continuous cycles */
@@ -1992,7 +2095,7 @@ body:has([data-home-split-root]) main {
   justify-content: center;
   min-height: 2.35rem;
   /* Stroke asset is heavier on the right/bottom — optical center nudge */
-  padding: 0.26rem 1.28rem 0.54rem 1rem;
+  padding: calc(0.26rem + 1px) 1.28rem calc(0.54rem - 1px) 1rem;
   border: none;
   border-radius: 0;
   background-color: transparent;
@@ -2196,13 +2299,29 @@ body:has([data-home-split-root]) main {
 }
 
 .quest-card-prop-wrap {
-  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 380ms ease,
+    visibility 380ms ease;
   transform-origin: 60% 80%;
 }
 
-.group\/quest:hover .quest-card-prop-wrap {
-  /* almost static vs card — tiny settle, no big lift/scale */
-  transform: translate3d(0, -1.5px, 0) rotate(0.6deg) scale(1.012);
+/* Desktop: props appear on hover only (touch lg stays hidden) */
+@media (min-width: 1024px) {
+  .quest-card-prop-wrap {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(6px, 8px, 0) scale(0.94);
+  }
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .group\/quest:hover .quest-card-prop-wrap {
+    opacity: 1;
+    visibility: visible;
+    /* almost static vs card — tiny settle, no big lift/scale */
+    transform: translate3d(0, -1.5px, 0) rotate(0.6deg) scale(1.012);
+  }
 }
 
 /* Card / detail titles: same face as description (Montserrat) */
@@ -2314,5 +2433,9 @@ body:has([data-home-split-root]) main {
   .group\/quest:hover .quest-card-prop-wrap {
     transform: none;
     animation: none;
+  }
+
+  .quest-card-prop-wrap {
+    transition: opacity 0.01ms, visibility 0.01ms;
   }
 }

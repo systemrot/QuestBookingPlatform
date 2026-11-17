@@ -7,7 +7,6 @@ import {
   type QuestForCatalog,
 } from "@/components/quest-catalog-card";
 import { propVariantForQuestTitle } from "@/components/quest-card-prop";
-import { getCitySeo } from "@/config/city-seo";
 import {
   getCityBySlug,
   type CitySlug,
@@ -59,15 +58,13 @@ export async function HomeCatalog({ citySlug }: Props) {
         }
       : null;
 
-  const citySeo = getCitySeo(citySlug);
-
   return (
     <main className="flex w-full flex-1 flex-col">
       <CityLocalJsonLd citySlug={citySlug} />
       <HomeHero
         catalogCount={catalog.length}
         citySlug={citySlug}
-        catalogLabel={`Квесты ${citySeo.inCity}`}
+        catalogLabel="Каталог квестов"
         seo={<CitySeoPanel citySlug={citySlug} />}
       >
         {catalogUnavailable ? (

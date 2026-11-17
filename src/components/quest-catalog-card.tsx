@@ -330,7 +330,7 @@ export function QuestCatalogCard({
               </CardDescription>
             </CardHeader>
           </div>
-          <CardFooter className="relative z-[1] mt-auto flex items-center justify-start border-0 bg-[oklch(0.1_0.012_25)] px-4 pb-6 pt-2 pr-16 sm:pb-7 sm:pr-20">
+          <CardFooter className="relative z-[1] mt-auto flex items-center justify-start border-0 bg-[oklch(0.1_0.012_25)] px-4 pb-6 pt-2 lg:pb-7 lg:pr-20">
             <Button
               className="btn-blood-brush h-auto min-h-11 w-auto min-w-[10.75rem] justify-center px-5 text-sm"
               onClick={(e) => {
@@ -350,7 +350,7 @@ export function QuestCatalogCard({
             </Button>
           </CardFooter>
         </Card>
-        <div className="quest-card-prop-wrap pointer-events-none absolute -bottom-3 -right-3 z-20 rotate-[8deg] sm:-bottom-2 sm:-right-4 sm:rotate-[10deg]">
+        <div className="quest-card-prop-wrap pointer-events-none absolute -bottom-2 -right-4 z-20 hidden rotate-[10deg] lg:block">
           <QuestCardProp variant={propVariant} />
         </div>
       </div>
