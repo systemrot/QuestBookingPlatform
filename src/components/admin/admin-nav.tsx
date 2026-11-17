@@ -96,7 +96,7 @@ const LINKS: NavLinkDef[] = [
     match: (p) => p.startsWith("/admin/profile"),
     icon: CircleUserRound,
   },
-  { href: "/", label: "На сайт", match: () => false },
+  { href: "__home__", label: "На сайт", match: () => false },
 ];
 
 function PendingDot() {
@@ -156,11 +156,16 @@ function NavItem({
 type Props = {
   variant: "sidebar" | "mobile";
   role: AppRole;
+  /** Preferred public home, e.g. /oryol — avoid `/` redirect races. */
+  homeHref: string;
 };
 
-export function AdminNav({ variant, role }: Props) {
+export function AdminNav({ variant, role, homeHref }: Props) {
   const pathname = usePathname();
-  const links = LINKS.filter((item) => !item.ownerOnly || isOwner(role));
+  const links = LINKS.filter((item) => !item.ownerOnly || isOwner(role)).map(
+    (item) =>
+      item.href === "__home__" ? { ...item, href: homeHref } : item
+  );
 
   if (variant === "mobile") {
     return (
@@ -171,9 +176,10 @@ export function AdminNav({ variant, role }: Props) {
         {links.map((item) => {
           const active = item.match(pathname);
           const Icon = item.icon;
+          const isHome = item.href === homeHref && item.label === "На сайт";
           return (
             <Link
-              key={item.href}
+              key={item.href + item.label}
               href={item.href}
               prefetch={false}
               className={cn(
@@ -183,7 +189,7 @@ export function AdminNav({ variant, role }: Props) {
                 }),
                 "shrink-0 gap-1.5",
                 active && "pointer-events-none",
-                item.href === "/" && "ml-auto",
+                isHome && "ml-auto",
                 item.accent &&
                   !active &&
                   "text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
@@ -212,7 +218,7 @@ export function AdminNav({ variant, role }: Props) {
           const Icon = item.icon;
           return (
             <NavItem
-              key={item.href}
+              key={item.href + item.label}
               href={item.href}
               active={active}
               className={

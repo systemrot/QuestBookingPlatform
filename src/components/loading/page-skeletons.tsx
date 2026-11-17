@@ -127,7 +127,7 @@ export function CatalogPageSkeleton() {
           <header className="home-split-top">
             <div className="home-split-brand">
               <Link
-                href="/"
+                href="/oryol"
                 className="shrink-0 font-display text-[1.2rem] uppercase tracking-[0.04em] text-white [text-shadow:0_0_18px_rgba(220,38,38,0.35)] sm:text-xl"
               >
                 {siteConfig.brandName}

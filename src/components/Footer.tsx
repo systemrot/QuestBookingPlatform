@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Send } from "lucide-react";
 
+import { CityHomeLink } from "@/components/city-home-link";
 import { CityNavLink } from "@/components/city-nav-link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
 const footerNav = [
-  { href: "/", label: "Главная" },
+  { href: "home", label: "Главная" },
   { href: "/about", label: "О нас" },
   { href: "/bookings", label: "Мои заявки" },
 ] as const;
@@ -64,7 +65,11 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                 <ul className="home-split-footer-links">
                   {footerNav.map((item) => (
                     <li key={item.href}>
-                      <Link href={item.href}>{item.label}</Link>
+                      {item.href === "home" ? (
+                        <CityHomeLink>{item.label}</CityHomeLink>
+                      ) : (
+                        <Link href={item.href}>{item.label}</Link>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -160,12 +165,18 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                   <ul className="flex flex-col gap-2 text-sm">
                     {footerNav.map((item) => (
                       <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className="text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          {item.label}
-                        </Link>
+                        {item.href === "home" ? (
+                          <CityHomeLink className="text-muted-foreground transition-colors hover:text-foreground">
+                            {item.label}
+                          </CityHomeLink>
+                        ) : (
+                          <Link
+                            href={item.href}
+                            className="text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {item.label}
+                          </Link>
+                        )}
                       </li>
                     ))}
                   </ul>

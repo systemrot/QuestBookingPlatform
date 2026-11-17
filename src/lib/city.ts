@@ -1,11 +1,14 @@
 import { cookies, headers } from "next/headers";
 
+import {
+  CITY_COOKIE,
+  DEFAULT_CITY_SLUG,
+  isCitySlug,
+  type CitySlug,
+} from "@/lib/city-slug";
 import { dbUrgent } from "@/lib/prisma";
 
-export const CITY_COOKIE = "qb_city";
-export const DEFAULT_CITY_SLUG = "oryol";
-
-export type CitySlug = "oryol" | "smolensk";
+export { CITY_COOKIE, DEFAULT_CITY_SLUG, isCitySlug, type CitySlug };
 
 export type CityRow = {
   id: string;
@@ -20,10 +23,6 @@ const cookieBase = {
   path: "/",
   secure: process.env.NODE_ENV === "production",
 };
-
-export function isCitySlug(value: string): value is CitySlug {
-  return value === "oryol" || value === "smolensk";
-}
 
 /** Vercel / CDN soft hint → наш slug (или null). */
 export function mapGeoCityToSlug(raw: string | null | undefined): CitySlug | null {

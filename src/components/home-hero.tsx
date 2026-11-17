@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { auth } from "@/auth";
+import { CityHomeLink } from "@/components/city-home-link";
 import { CityPicker } from "@/components/city-picker";
 import { Footer } from "@/components/Footer";
 import { HeroSceneMedia } from "@/components/hero-scene-media";
@@ -65,12 +65,12 @@ export async function HomeHero({
 
         <header className="home-split-top">
           <div className="home-split-brand">
-            <Link
-              href="/"
+            <CityHomeLink
+              fallbackSlug={currentSlug}
               className="shrink-0 font-display text-[1.2rem] uppercase tracking-[0.04em] text-white [text-shadow:0_0_18px_rgba(220,38,38,0.35)] sm:text-xl"
             >
               {siteConfig.brandName}
-            </Link>
+            </CityHomeLink>
             {cities.length > 0 ? (
               <CityPicker cities={cities} currentSlug={currentSlug} />
             ) : null}

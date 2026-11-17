@@ -4,7 +4,7 @@ import { authConfig } from "@/auth.config";
 import { isStaff } from "@/lib/roles";
 import { NextResponse } from "next/server";
 
-/** Keep in sync with src/lib/city.ts — do not import city.ts (pulls DB into edge). */
+/** Keep in sync with src/lib/city-slug.ts — do not import city.ts (pulls DB into edge). */
 const CITY_COOKIE = "qb_city";
 
 function isCitySlug(value: string): value is "oryol" | "smolensk" {
@@ -24,27 +24,11 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL(`/${slug}`, req.url), 307);
   }
 
+  // City preference is written only by selectCity / CityNavLink — never here.
+  // URL visits must not mutate qb_city (prefetch and soft-nav races).
   const citySeg = path.replace(/^\//, "").split("/")[0] ?? "";
   if (isCitySlug(citySeg)) {
-    const res = NextResponse.next();
-    // Sync preference only on real document navigations (typed URL, refresh,
-    // full page load). Never on <Link> prefetch / RSC prefetch — that was
-    // silently flipping qb_city (e.g. admin footer → home jumps to Smolensk).
-    const isDocumentNav =
-      req.headers.get("sec-fetch-mode") === "navigate" &&
-      req.headers.get("sec-fetch-dest") === "document";
-    if (
-      isDocumentNav &&
-      req.cookies.get(CITY_COOKIE)?.value !== citySeg
-    ) {
-      res.cookies.set(CITY_COOKIE, citySeg, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-      });
-    }
-    return res;
+    return NextResponse.next();
   }
 
   const isUserOnly =
@@ -76,7 +60,9 @@ export const proxy = auth((req) => {
       return NextResponse.redirect(login);
     }
     if (!isStaff(session.user.role)) {
-      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      const cookieCity = req.cookies.get(CITY_COOKIE)?.value;
+      const slug = isCitySlug(cookieCity ?? "") ? cookieCity! : "oryol";
+      return NextResponse.redirect(new URL(`/${slug}`, req.nextUrl.origin));
     }
     if (isOwnerOnly && session.user.role !== "OWNER") {
       return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));

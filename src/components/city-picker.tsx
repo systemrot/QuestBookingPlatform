@@ -44,7 +44,15 @@ export function CityPicker({ cities, currentSlug, className }: Props) {
     setValue(currentSlug);
   }, [currentSlug]);
 
-  const onChange = (next: string | null) => {
+  const onChange = (next: string | null, reason?: string) => {
+    // Ignore non-user Select events (autofill uses reason "none").
+    if (
+      reason != null &&
+      reason !== "item-press" &&
+      reason !== "keyboard"
+    ) {
+      return;
+    }
     if (!next || next === value || pending) return;
     const prev = value;
     setValue(next);
@@ -96,7 +104,7 @@ export function CityPicker({ cities, currentSlug, className }: Props) {
                 key={c.slug}
                 type="button"
                 disabled={pending}
-                onClick={() => onChange(c.slug)}
+                onClick={() => onChange(c.slug, "item-press")}
                 className={cn(
                   "flex h-12 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-base font-medium transition-colors",
                   selected
@@ -119,7 +127,9 @@ export function CityPicker({ cities, currentSlug, className }: Props) {
       <div className="hidden lg:inline-flex">
         <Select
           value={value}
-          onValueChange={onChange}
+          onValueChange={(next, details) =>
+            onChange(next, details?.reason)
+          }
           disabled={pending}
           items={items}
         >
