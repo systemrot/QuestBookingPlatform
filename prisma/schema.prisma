@@ -121,14 +121,20 @@ model Quest {
   imageAlt    String?
   price       Decimal  @db.Decimal(10, 2)
   cityId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  /** Manual catalog order within a city (admin drag-and-drop). */
+  sortOrder   Int       @default(0)
+  /** Soft-hide from catalog; hard delete only from archive. */
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   city  City   @relation(fields: [cityId], references: [id], onDelete: Restrict)
   slots Slot[]
 
   @@unique([cityId, title])
   @@index([cityId])
+  @@index([cityId, sortOrder])
+  @@index([archivedAt])
 }
 
 model Slot {

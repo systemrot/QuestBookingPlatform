@@ -41,7 +41,7 @@ export function CitySuggestBanner({ suggestedSlug, suggestedName }: Props) {
 
   return (
     <div className="border-b border-border/70 bg-muted/30 px-4 py-2 text-sm sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
         <p className="text-muted-foreground">
           Похоже, вы в городе{" "}
           <span className="font-medium text-foreground">{suggestedName}</span>.

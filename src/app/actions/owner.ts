@@ -63,16 +63,60 @@ export async function upsertQuest(input: {
     if (!city) return { error: "Город не найден." as const };
 
     if (input.id) {
+      const existing = await dbUrgent((prisma) =>
+        prisma.quest.findUnique({
+          where: { id: input.id },
+          select: { cityId: true, sortOrder: true },
+        })
+      );
+      if (!existing) return { error: "Квест не найден." as const };
+
+      let sortOrder = existing.sortOrder;
+      if (existing.cityId !== cityId) {
+        const agg = await dbUrgent((prisma) =>
+          prisma.quest.aggregate({
+            where: { cityId, archivedAt: null },
+            _max: { sortOrder: true },
+          })
+        );
+        sortOrder = (agg._max.sortOrder ?? -1) + 1;
+      }
+
       await dbUrgent((prisma) =>
         prisma.quest.update({
           where: { id: input.id },
-          data: { title, description, image, imageAlt, price, cityId },
+          data: {
+            title,
+            description,
+            image,
+            imageAlt,
+            price,
+            cityId,
+            sortOrder,
+          },
         })
       );
     } else {
+      const agg = await dbUrgent((prisma) =>
+        prisma.quest.aggregate({
+          where: { cityId, archivedAt: null },
+          _max: { sortOrder: true },
+        })
+      );
+      const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+
       await dbUrgent((prisma) =>
         prisma.quest.create({
-          data: { title, description, image, imageAlt, price, cityId },
+          data: {
+            title,
+            description,
+            image,
+            imageAlt,
+            price,
+            cityId,
+            sortOrder,
+            archivedAt: null,
+          },
         })
       );
     }
@@ -90,12 +134,108 @@ export async function upsertQuest(input: {
   }
 }
 
+export async function archiveQuest(id: string) {
+  const session = await ensureOwner();
+  if (!session) return { error: "Недостаточно прав." as const };
+  if (!id) return { error: "Не указан квест." as const };
+
+  try {
+    const row = await dbUrgent((prisma) =>
+      prisma.quest.findUnique({
+        where: { id },
+        select: { id: true, archivedAt: true },
+      })
+    );
+    if (!row) return { error: "Квест не найден." as const };
+    if (row.archivedAt) {
+      return { error: "Квест уже в архиве." as const };
+    }
+
+    await dbUrgent((prisma) =>
+      prisma.quest.update({
+        where: { id },
+        data: { archivedAt: new Date() },
+      })
+    );
+
+    invalidateQuestCatalog();
+    invalidateAdminData();
+    revalidatePath("/");
+    revalidatePath("/oryol");
+    revalidatePath("/smolensk");
+    revalidatePath("/admin/quests");
+    return { success: true as const };
+  } catch (e) {
+    console.error("[archiveQuest]", e);
+    return { error: "Не удалось архивировать квест." as const };
+  }
+}
+
+export async function restoreQuest(id: string) {
+  const session = await ensureOwner();
+  if (!session) return { error: "Недостаточно прав." as const };
+  if (!id) return { error: "Не указан квест." as const };
+
+  try {
+    const row = await dbUrgent((prisma) =>
+      prisma.quest.findUnique({
+        where: { id },
+        select: { id: true, cityId: true, archivedAt: true },
+      })
+    );
+    if (!row) return { error: "Квест не найден." as const };
+    if (!row.archivedAt) {
+      return { error: "Квест не в архиве." as const };
+    }
+
+    const agg = await dbUrgent((prisma) =>
+      prisma.quest.aggregate({
+        where: { cityId: row.cityId, archivedAt: null },
+        _max: { sortOrder: true },
+      })
+    );
+    const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+
+    await dbUrgent((prisma) =>
+      prisma.quest.update({
+        where: { id },
+        data: { archivedAt: null, sortOrder },
+      })
+    );
+
+    invalidateQuestCatalog();
+    invalidateAdminData();
+    revalidatePath("/");
+    revalidatePath("/oryol");
+    revalidatePath("/smolensk");
+    revalidatePath("/admin/quests");
+    return { success: true as const };
+  } catch (e) {
+    console.error("[restoreQuest]", e);
+    return { error: "Не удалось вернуть квест из архива." as const };
+  }
+}
+
+/** Hard-delete only archived quests (active ones must be archived first). */
 export async function deleteQuest(id: string) {
   const session = await ensureOwner();
   if (!session) return { error: "Недостаточно прав." as const };
   if (!id) return { error: "Не указан квест." as const };
 
   try {
+    const row = await dbUrgent((prisma) =>
+      prisma.quest.findUnique({
+        where: { id },
+        select: { id: true, archivedAt: true },
+      })
+    );
+    if (!row) return { error: "Квест не найден." as const };
+    if (!row.archivedAt) {
+      return {
+        error: "Сначала архивируйте квест — удаление только из архива." as const,
+      };
+    }
+
     await dbUrgent((prisma) => prisma.quest.delete({ where: { id } }));
     invalidateQuestCatalog();
     invalidateAdminData();
@@ -109,6 +249,63 @@ export async function deleteQuest(id: string) {
     return {
       error: "Не удалось удалить. Возможно, есть связанные брони." as const,
     };
+  }
+}
+
+/** Persist catalog order for one city after admin drag-and-drop. */
+export async function reorderQuests(input: {
+  cityId: string;
+  orderedIds: string[];
+}) {
+  const session = await ensureOwner();
+  if (!session) return { error: "Недостаточно прав." as const };
+
+  const cityId = input.cityId.trim();
+  const orderedIds = input.orderedIds.filter(Boolean);
+  if (!cityId) return { error: "Не указан город." as const };
+  if (orderedIds.length === 0) {
+    return { error: "Пустой порядок квестов." as const };
+  }
+  if (new Set(orderedIds).size !== orderedIds.length) {
+    return { error: "Дубликаты в порядке квестов." as const };
+  }
+
+  try {
+    const rows = await dbUrgent((prisma) =>
+      prisma.quest.findMany({
+        where: { cityId, archivedAt: null },
+        select: { id: true },
+      })
+    );
+    const existing = new Set(rows.map((r) => r.id));
+    if (
+      existing.size !== orderedIds.length ||
+      orderedIds.some((id) => !existing.has(id))
+    ) {
+      return { error: "Список квестов устарел — обновите страницу." as const };
+    }
+
+    await dbUrgent(async (prisma) => {
+      await prisma.$transaction(
+        orderedIds.map((id, index) =>
+          prisma.quest.update({
+            where: { id },
+            data: { sortOrder: index },
+          })
+        )
+      );
+    });
+
+    invalidateQuestCatalog();
+    invalidateAdminData();
+    revalidatePath("/");
+    revalidatePath("/oryol");
+    revalidatePath("/smolensk");
+    revalidatePath("/admin/quests");
+    return { success: true as const };
+  } catch (e) {
+    console.error("[reorderQuests]", e);
+    return { error: "Не удалось сохранить порядок." as const };
   }
 }
 

@@ -1,15 +1,18 @@
 import { auth } from "@/auth";
+import { CityLocalJsonLd } from "@/components/city-local-json-ld";
+import { CitySeoPanel } from "@/components/city-seo-panel";
 import { HomeHero } from "@/components/home-hero";
 import {
   QuestCatalogCard,
   type QuestForCatalog,
 } from "@/components/quest-catalog-card";
+import { propVariantForQuestTitle } from "@/components/quest-card-prop";
+import { getCitySeo } from "@/config/city-seo";
 import {
   getCityBySlug,
   type CitySlug,
 } from "@/lib/city";
 import { getQuestCatalog } from "@/lib/data";
-import { padCatalogForLocalDemo } from "@/lib/demo-fat-catalog";
 
 type Props = {
   citySlug: CitySlug;
@@ -34,9 +37,7 @@ export async function HomeCatalog({ citySlug }: Props) {
     catalogUnavailable = true;
   }
 
-  const padded = padCatalogForLocalDemo(quests, citySlug);
-
-  const catalog: QuestForCatalog[] = padded.map((q, index) => ({
+  const catalog: QuestForCatalog[] = quests.map((q) => ({
     id: q.id,
     title: q.title,
     description: q.description,
@@ -44,7 +45,7 @@ export async function HomeCatalog({ citySlug }: Props) {
     imageAlt: q.imageAlt ?? null,
     cityName,
     price: q.price.toString(),
-    propVariant: (index % 3) as 0 | 1 | 2,
+    propVariant: propVariantForQuestTitle(q.title),
   }));
 
   const sessionInfo =
@@ -58,9 +59,17 @@ export async function HomeCatalog({ citySlug }: Props) {
         }
       : null;
 
+  const citySeo = getCitySeo(citySlug);
+
   return (
     <main className="flex w-full flex-1 flex-col">
-      <HomeHero catalogCount={catalog.length} citySlug={citySlug}>
+      <CityLocalJsonLd citySlug={citySlug} />
+      <HomeHero
+        catalogCount={catalog.length}
+        citySlug={citySlug}
+        catalogLabel={`Квесты ${citySeo.inCity}`}
+        seo={<CitySeoPanel citySlug={citySlug} />}
+      >
         {catalogUnavailable ? (
           <div className="rounded-xl border border-blood/30 bg-black/55 p-10 text-center text-sm text-white/70 backdrop-blur-md">
             <p className="font-medium text-white">Каталог временно недоступен</p>

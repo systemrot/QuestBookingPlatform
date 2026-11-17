@@ -2,11 +2,25 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
-import { Info, Plus } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type DragEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { GripVertical, Info, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteQuest, upsertQuest } from "@/app/actions/owner";
+import {
+  archiveQuest,
+  deleteQuest,
+  reorderQuests,
+  restoreQuest,
+  upsertQuest,
+} from "@/app/actions/owner";
 import { CitySelectField } from "@/components/admin/city-select-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +50,8 @@ export type QuestEditorRow = {
   price: string;
   cityId: string;
   cityName: string;
+  sortOrder: number;
+  archivedAt: string | null;
 };
 
 type Props = {
@@ -52,6 +68,13 @@ type FormState = {
   price: string;
   cityId: string;
 };
+
+type ConfirmState =
+  | { kind: "archive"; quest: QuestEditorRow }
+  | { kind: "restore"; quest: QuestEditorRow }
+  | { kind: "delete"; quest: QuestEditorRow };
+
+type ListTab = string; // cityId | "archive"
 
 function emptyForm(cities: QuestEditorCity[]): FormState {
   return {
@@ -101,25 +124,90 @@ function CoverThumb({
   );
 }
 
+function sortActive(rows: QuestEditorRow[]) {
+  return [...rows].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, "ru")
+  );
+}
+
+function sortArchived(rows: QuestEditorRow[]) {
+  return [...rows].sort((a, b) => {
+    const at = a.archivedAt ?? "";
+    const bt = b.archivedAt ?? "";
+    return bt.localeCompare(at) || a.title.localeCompare(b.title, "ru");
+  });
+}
+
 export function QuestsManager({ cities, quests }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm(cities));
+  const [tab, setTab] = useState<ListTab>(() => cities[0]?.id ?? "archive");
+  const [localQuests, setLocalQuests] = useState(quests);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const blockDragRef = useRef(false);
+  /** Touch/pen DnD — HTML5 drag не работает на мобилках. */
+  const pointerDragRef = useRef<{
+    id: string;
+    pointerId: number;
+    moved: boolean;
+    overId: string | null;
+  } | null>(null);
   const editing = Boolean(form.id);
+  const archiveTab = tab === "archive";
+
+  useEffect(() => {
+    setLocalQuests(quests);
+  }, [quests]);
+
+  useEffect(() => {
+    if (tab === "archive") return;
+    if (!cities.some((c) => c.id === tab) && cities[0]) {
+      setTab(cities[0].id);
+    }
+  }, [cities, tab]);
 
   const previewSrc = useMemo(
     () => resolveQuestImage(form.image.trim() || null),
     [form.image]
   );
 
+  const activeQuests = useMemo(
+    () => sortActive(localQuests.filter((q) => !q.archivedAt)),
+    [localQuests]
+  );
+  const archivedQuests = useMemo(
+    () => sortArchived(localQuests.filter((q) => Boolean(q.archivedAt))),
+    [localQuests]
+  );
+
+  const cityQuests = useMemo(
+    () => activeQuests.filter((q) => q.cityId === tab),
+    [activeQuests, tab]
+  );
+
+  const visibleQuests = archiveTab ? archivedQuests : cityQuests;
+
   const closeDialog = () => {
     setOpen(false);
     setForm(emptyForm(cities));
   };
 
+  const closeConfirm = () => {
+    if (pending) return;
+    setConfirm(null);
+  };
+
   const openCreate = () => {
-    setForm(emptyForm(cities));
+    const cityId =
+      !archiveTab && tab ? tab : cities[0]?.id || "";
+    setForm({
+      ...emptyForm(cities),
+      cityId,
+    });
     setOpen(true);
   };
 
@@ -157,29 +245,180 @@ export function QuestsManager({ cities, quests }: Props) {
     });
   };
 
-  const remove = (id: string, title: string) => {
-    if (!window.confirm(`Удалить квест «${title}»? Слоты тоже удалятся.`)) {
-      return;
-    }
+  const runConfirm = () => {
+    if (!confirm) return;
+    const { kind, quest } = confirm;
+
     startTransition(async () => {
-      const res = await deleteQuest(id);
+      if (kind === "archive") {
+        const res = await archiveQuest(quest.id);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success(`«${quest.title}» в архиве`);
+        setConfirm(null);
+        router.refresh();
+        return;
+      }
+
+      if (kind === "restore") {
+        const res = await restoreQuest(quest.id);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success(`«${quest.title}» снова в каталоге`);
+        setConfirm(null);
+        router.refresh();
+        return;
+      }
+
+      const res = await deleteQuest(quest.id);
       if (res.error) {
         toast.error(res.error);
         return;
       }
-      toast.success("Квест удалён");
-      if (form.id === id) closeDialog();
+      toast.success(`«${quest.title}» удалён`);
+      if (form.id === quest.id) closeDialog();
+      setConfirm(null);
       router.refresh();
     });
+  };
+
+  const persistOrder = (cityId: string, ordered: QuestEditorRow[]) => {
+    const previous = localQuests;
+    const next = localQuests.map((q) => {
+      if (q.cityId !== cityId || q.archivedAt) return q;
+      const index = ordered.findIndex((row) => row.id === q.id);
+      if (index < 0) return q;
+      return { ...q, sortOrder: index };
+    });
+    setLocalQuests(next);
+
+    startTransition(async () => {
+      const res = await reorderQuests({
+        cityId,
+        orderedIds: ordered.map((q) => q.id),
+      });
+      if (res.error) {
+        toast.error(res.error);
+        setLocalQuests(previous);
+        return;
+      }
+      toast.success("Порядок сохранён");
+      router.refresh();
+    });
+  };
+
+  const armActionsPointer = (e: ReactPointerEvent) => {
+    e.stopPropagation();
+    blockDragRef.current = true;
+  };
+
+  const clearActionsPointer = () => {
+    blockDragRef.current = false;
+  };
+
+  const moveQuestBefore = (sourceId: string, targetId: string) => {
+    if (archiveTab || !sourceId || sourceId === targetId || !tab) return;
+    const list = [...cityQuests];
+    const from = list.findIndex((q) => q.id === sourceId);
+    const to = list.findIndex((q) => q.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    persistOrder(tab, list);
+  };
+
+  const onDragStart = (e: DragEvent<HTMLLIElement>, id: string) => {
+    if (blockDragRef.current || pending || archiveTab || pointerDragRef.current) {
+      e.preventDefault();
+      return;
+    }
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const onDragOver = (e: DragEvent<HTMLLIElement>, id: string) => {
+    if (archiveTab) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (overId !== id) setOverId(id);
+  };
+
+  const onDrop = (e: DragEvent<HTMLLIElement>, targetId: string) => {
+    e.preventDefault();
+    const sourceId = dragId || e.dataTransfer.getData("text/plain");
+    setDragId(null);
+    setOverId(null);
+    moveQuestBefore(sourceId, targetId);
+  };
+
+  const onDragEnd = () => {
+    setDragId(null);
+    setOverId(null);
+    blockDragRef.current = false;
+  };
+
+  const onHandlePointerDown = (
+    e: ReactPointerEvent<HTMLSpanElement>,
+    id: string
+  ) => {
+    if (pending || archiveTab) return;
+    // Мышь оставляем HTML5 DnD на всей строке; тач/стилус — через pointer.
+    if (e.pointerType === "mouse") return;
+    e.preventDefault();
+    e.stopPropagation();
+    pointerDragRef.current = {
+      id,
+      pointerId: e.pointerId,
+      moved: false,
+      overId: id,
+    };
+    setDragId(id);
+    setOverId(id);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onHandlePointerMove = (e: ReactPointerEvent<HTMLSpanElement>) => {
+    const drag = pointerDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    drag.moved = true;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const row = el?.closest("[data-quest-id]") as HTMLElement | null;
+    const targetId = row?.dataset.questId ?? null;
+    if (targetId && targetId !== drag.overId) {
+      drag.overId = targetId;
+      setOverId(targetId);
+    }
+  };
+
+  const finishPointerDrag = (e: ReactPointerEvent<HTMLSpanElement>) => {
+    const drag = pointerDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const sourceId = drag.id;
+    const targetId = drag.overId;
+    const moved = drag.moved;
+    pointerDragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    setDragId(null);
+    setOverId(null);
+    if (moved && targetId) moveQuestBefore(sourceId, targetId);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {quests.length === 0
+          {localQuests.length === 0
             ? "Квестов пока нет"
-            : `Всего: ${quests.length}`}
+            : `Активных: ${activeQuests.length} · в архиве: ${archivedQuests.length}`}
         </p>
         <Button
           type="button"
@@ -193,56 +432,213 @@ export function QuestsManager({ cities, quests }: Props) {
         </Button>
       </div>
 
-      {quests.length === 0 ? (
+      <div
+        role="tablist"
+        aria-label="Город или архив"
+        className="flex flex-wrap gap-1.5"
+      >
+        {cities.map((city) => {
+          const count = activeQuests.filter((q) => q.cityId === city.id).length;
+          const active = city.id === tab;
+          return (
+            <button
+              key={city.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              disabled={pending}
+              onClick={() => setTab(city.id)}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors",
+                active
+                  ? "border-border bg-card text-foreground"
+                  : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+              )}
+            >
+              {city.name}
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {count}
+              </span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={archiveTab}
+          disabled={pending}
+          onClick={() => setTab("archive")}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors",
+            archiveTab
+              ? "border-border bg-card text-foreground"
+              : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+          )}
+        >
+          Архив
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {archivedQuests.length}
+          </span>
+        </button>
+      </div>
+
+      {!archiveTab && cityQuests.length > 1 ? (
+        <p className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/25 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          <GripVertical
+            className="mt-0.5 size-3.5 shrink-0 text-foreground/55"
+            aria-hidden
+          />
+          <span>
+            Порядок карточек на главной задаётся здесь — перетащите квесты
+            местами (на телефоне — за иконку ⋮⋮ слева).
+          </span>
+        </p>
+      ) : null}
+
+      {archiveTab ? (
+        <p className="rounded-lg border border-border/60 bg-muted/25 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          Архивные квесты скрыты с главной. Можно вернуть в каталог или удалить
+          навсегда.
+        </p>
+      ) : null}
+
+      {visibleQuests.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border/70 bg-card/30 px-4 py-8 text-center text-sm text-muted-foreground">
-          Создайте первый сценарий кнопкой выше.
+          {archiveTab
+            ? "Архив пуст."
+            : localQuests.length === 0
+              ? "Создайте первый сценарий кнопкой выше."
+              : "В этом городе пока нет активных квестов."}
         </p>
       ) : (
         <ul className="space-y-2">
-          {quests.map((q) => (
-            <li
-              key={q.id}
-              className="rounded-xl border border-border/70 bg-card/40 p-3"
-            >
-              <div className="flex items-start gap-3">
-                <CoverThumb
-                  src={q.image}
-                  alt={q.imageAlt?.trim() || q.title}
-                  className="h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]"
-                />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="font-medium leading-snug">{q.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {q.cityName} · {q.price} ₽
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8"
-                      disabled={pending}
-                      onClick={() => openEdit(q)}
+          {visibleQuests.map((q) => {
+            const isDragging = dragId === q.id;
+            const isOver = Boolean(
+              !archiveTab && overId === q.id && dragId && dragId !== q.id
+            );
+            return (
+              <li
+                key={q.id}
+                data-quest-id={q.id}
+                draggable={!pending && !archiveTab}
+                onDragStart={(e) => onDragStart(e, q.id)}
+                onDragOver={(e) => onDragOver(e, q.id)}
+                onDrop={(e) => onDrop(e, q.id)}
+                onDragEnd={onDragEnd}
+                className={cn(
+                  "relative rounded-xl border border-border/70 bg-card/40 p-3",
+                  !archiveTab && "cursor-grab active:cursor-grabbing",
+                  "transition-[transform,box-shadow,opacity,border-color] duration-150 ease-out",
+                  isDragging &&
+                    "scale-[0.98] opacity-55 shadow-lg shadow-black/25 ring-1 ring-white/10",
+                  isOver && "border-blood/40 bg-card/65",
+                  pending && "cursor-default"
+                )}
+              >
+                {isOver ? (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -top-px right-4 left-4 z-10 h-px rounded-full bg-[var(--blood-hot)]/80"
+                  />
+                ) : null}
+                <div className="flex items-start gap-2 sm:gap-3">
+                  {!archiveTab ? (
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      aria-label={`Перетащить «${q.title}»`}
+                      className={cn(
+                        "mt-1 inline-flex size-10 shrink-0 touch-none items-center justify-center rounded-md text-muted-foreground sm:size-8",
+                        !pending && "cursor-grab active:cursor-grabbing"
+                      )}
+                      onPointerDown={(e) => onHandlePointerDown(e, q.id)}
+                      onPointerMove={onHandlePointerMove}
+                      onPointerUp={finishPointerDrag}
+                      onPointerCancel={finishPointerDrag}
                     >
-                      Изменить
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-destructive"
-                      disabled={pending}
-                      onClick={() => remove(q.id, q.title)}
+                      <GripVertical className="size-5 sm:size-4" aria-hidden />
+                    </span>
+                  ) : null}
+                  <CoverThumb
+                    src={q.image}
+                    alt={q.imageAlt?.trim() || q.title}
+                    className="h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]"
+                  />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="font-medium leading-snug">{q.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {archiveTab
+                          ? `${q.cityName} · ${q.price} ₽`
+                          : `${q.price} ₽ · порядок ${q.sortOrder + 1}`}
+                      </p>
+                    </div>
+                    <div
+                      className="flex flex-wrap gap-1.5"
+                      data-no-drag
+                      onPointerDown={armActionsPointer}
+                      onPointerUp={clearActionsPointer}
+                      onPointerCancel={clearActionsPointer}
+                      onPointerLeave={clearActionsPointer}
                     >
-                      Удалить
-                    </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 cursor-pointer"
+                        disabled={pending}
+                        onClick={() => openEdit(q)}
+                      >
+                        Изменить
+                      </Button>
+                      {archiveTab ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 cursor-pointer"
+                            disabled={pending}
+                            onClick={() =>
+                              setConfirm({ kind: "restore", quest: q })
+                            }
+                          >
+                            Вернуть
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 cursor-pointer text-destructive"
+                            disabled={pending}
+                            onClick={() =>
+                              setConfirm({ kind: "delete", quest: q })
+                            }
+                          >
+                            Удалить
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 cursor-pointer"
+                          disabled={pending}
+                          onClick={() =>
+                            setConfirm({ kind: "archive", quest: q })
+                          }
+                        >
+                          В архив
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -399,6 +795,64 @@ export function QuestsManager({ cities, quests }: Props) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirm !== null}
+        onOpenChange={(next) => {
+          if (!next) closeConfirm();
+        }}
+      >
+        <DialogContent showCloseButton={!pending} className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirm?.kind === "archive"
+                ? "Убрать квест в архив?"
+                : confirm?.kind === "restore"
+                  ? "Вернуть квест в каталог?"
+                  : "Удалить квест навсегда?"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirm?.kind === "archive"
+                ? "Квест исчезнет с главной. Слоты и история броней сохранятся — позже можно вернуть."
+                : confirm?.kind === "restore"
+                  ? "Квест снова появится в каталоге выбранного города (в конце списка)."
+                  : "Удаление необратимо. Если есть связанные брони, удаление может не пройти."}
+            </DialogDescription>
+          </DialogHeader>
+          {confirm ? (
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+              <p className="font-medium">{confirm.quest.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {confirm.quest.cityName} · {confirm.quest.price} ₽
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={closeConfirm}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              variant={confirm?.kind === "delete" ? "destructive" : "default"}
+              disabled={pending}
+              onClick={runConfirm}
+            >
+              {pending
+                ? "Сохраняем…"
+                : confirm?.kind === "archive"
+                  ? "Да, в архив"
+                  : confirm?.kind === "restore"
+                    ? "Да, вернуть"
+                    : "Да, удалить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

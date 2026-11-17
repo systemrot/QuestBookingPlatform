@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { auth } from "@/auth";
 import { CityPicker } from "@/components/city-picker";
 import { Footer } from "@/components/Footer";
+import { HeroSceneMedia } from "@/components/hero-scene-media";
 import { MarkHomeSplit } from "@/components/mark-home-split";
 import { SiteNav } from "@/components/site-nav";
 import { siteConfig } from "@/config/site";
@@ -19,15 +19,21 @@ import {
 
 type HomeHeroProps = {
   children?: ReactNode;
+  /** Full-bleed under catalog (outside the right column — soft scrim can reach the character). */
+  seo?: ReactNode;
   catalogCount?: number;
   /** URL city wins over cookie so /smolensk label matches catalog. */
   citySlug?: CitySlug;
+  /** Geo H2 above the grid, e.g. «Квесты в Орле». */
+  catalogLabel?: string;
 };
 
 export async function HomeHero({
   children,
+  seo,
   catalogCount = 0,
   citySlug,
+  catalogLabel = "Каталог квестов",
 }: HomeHeroProps) {
   const cookieSlug = await getSelectedCitySlug();
   const currentSlug =
@@ -50,39 +56,7 @@ export async function HomeHero({
       <div className="home-split-hero">
         <div className="home-split-scene" aria-hidden>
           <div className="home-split-plate">
-            <div className="home-split-cabin">
-              <Image
-                src="/brand/hero-cabin.jpg"
-                alt=""
-                fill
-                priority
-                unoptimized
-                sizes="100vw"
-                className="home-split-cabin-img object-cover"
-              />
-            </div>
-            <div className="home-split-content-veil" aria-hidden>
-              <Image
-                src="/brand/ui/veil-content-tr.png"
-                alt=""
-                fill
-                priority
-                unoptimized
-                sizes="70vw"
-                className="object-fill object-right-top"
-              />
-            </div>
-            <div className="home-split-character">
-              <Image
-                src="/brand/hero-character-hi.png"
-                alt=""
-                fill
-                priority
-                unoptimized
-                sizes="42vw"
-                className="object-contain object-left-bottom"
-              />
-            </div>
+            <HeroSceneMedia />
           </div>
           <div className="home-split-veil home-split-veil--glow" />
           <div className="home-split-veil home-split-veil--x" />
@@ -113,7 +87,8 @@ export async function HomeHero({
             <p className="home-split-eyebrow">
               <span className="home-split-eyebrow-accent">Бронирование</span>{" "}
               <span className="home-split-eyebrow-rest">
-                квестов · {cityLabel}
+                квестов ·{" "}
+                <span className="home-split-eyebrow-city">{cityLabel}</span>
               </span>
             </p>
             <h1 className="hero-title home-split-hero-title">
@@ -130,15 +105,15 @@ export async function HomeHero({
             <div id="catalog" className="home-split-catalog scroll-mt-24">
               {catalogCount > 0 ? (
                 <div className="home-split-catalog-bar">
-                  <span className="home-split-catalog-label">
-                    Каталог квестов
-                  </span>
+                  <h2 className="home-split-catalog-label">{catalogLabel}</h2>
                 </div>
               ) : null}
               {children}
             </div>
           ) : null}
         </div>
+
+        {seo ? <div className="home-split-seo">{seo}</div> : null}
       </div>
 
       <div className="home-split-footer">

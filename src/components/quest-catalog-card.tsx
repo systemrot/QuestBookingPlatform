@@ -44,8 +44,13 @@ import { Label } from "@/components/ui/label";
 import { RuPhoneInput } from "@/components/ui/ru-phone-input";
 import { BloodBrushDrips } from "@/components/blood-brush-drips";
 import { PartySizeStepper } from "@/components/party-size-stepper";
-import { QuestCardProp } from "@/components/quest-card-prop";
+import {
+  QuestCardProp,
+  type QuestPropVariant,
+} from "@/components/quest-card-prop";
+import { QuestDescriptionView } from "@/components/quest-description";
 import { formatRub, formatRu } from "@/lib/locale";
+import { questDescriptionTeaser } from "@/lib/quest-description";
 import { resolveQuestImage } from "@/lib/quest-image";
 import { fallbackQuestImageAlt } from "@/lib/quest-image-alt";
 import { displayRuPhoneFromStored } from "@/lib/ru-phone";
@@ -101,8 +106,8 @@ export type QuestForCatalog = {
   imageAlt?: string | null;
   cityName?: string | null;
   price: string;
-  /** Decorative prop index from reference (0 key, 1 stain, 2 badge). */
-  propVariant?: 0 | 1 | 2;
+  /** Decorative corner prop (0–2 originals, 3+ new quests). */
+  propVariant?: QuestPropVariant;
 };
 
 type SessionInfo = {
@@ -127,7 +132,7 @@ export function QuestCatalogCard({
   quest: QuestForCatalog;
   session: SessionInfo;
 }) {
-  const propVariant = quest.propVariant ?? 0;
+  const propVariant = (quest.propVariant ?? 0) as QuestPropVariant;
   const bookableDays = React.useMemo(() => listBookableDays(), []);
   const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>("schedule");
@@ -136,7 +141,6 @@ export function QuestCatalogCard({
   const [loading, setLoading] = React.useState(false);
   const [selectedSlot, setSelectedSlot] = React.useState<SlotOption | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
-  const [descExpanded, setDescExpanded] = React.useState(false);
   const [imageSrc, setImageSrc] = React.useState(() =>
     resolveQuestImageSrc(quest.image)
   );
@@ -155,7 +159,7 @@ export function QuestCatalogCard({
   const description =
     quest.description?.trim() ||
     "Выберите удобный день и время — менеджер свяжется для подтверждения.";
-  const descriptionLong = description.length > 160;
+  const cardTeaser = questDescriptionTeaser(quest.description) || description;
   const canBook = !session || session.role === "USER";
   const coverAlt =
     quest.imageAlt?.trim() ||
@@ -212,7 +216,6 @@ export function QuestCatalogCard({
     setStep("schedule");
     setSelectedSlot(null);
     setSubmitting(false);
-    setDescExpanded(false);
     setSubmitAttempted(false);
     setTouched({});
   }
@@ -311,19 +314,19 @@ export function QuestCatalogCard({
                   }
                 }}
               />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0.012_25)] from-[10%] via-black/35 via-[30%] to-transparent to-[55%]" />
               <div className="quest-card-media-wash pointer-events-none absolute inset-0" />
-              <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_48px_rgba(0,0,0,0.55)]" />
+              <div className="quest-card-media-fade pointer-events-none absolute inset-0" />
+              <div className="pointer-events-none absolute inset-0 z-[2] shadow-[inset_0_0_48px_rgba(0,0,0,0.55)]" />
             </div>
             <span className="quest-price-badge">
               От {formatRub(quest.price)}
             </span>
-            <CardHeader className="relative z-[2] -mt-10 flex flex-1 flex-col gap-2.5 bg-transparent px-4 pb-1.5 pt-2 sm:-mt-12">
+            <CardHeader className="relative z-[2] -mt-10 flex flex-1 flex-col gap-2.5 bg-gradient-to-b from-transparent from-0% via-[oklch(0.1_0.012_25)] via-[28%] to-[oklch(0.1_0.012_25)] px-4 pb-1.5 pt-2 sm:-mt-12">
               <CardTitle className="quest-card-title min-h-[2.1em] text-[1.2rem] sm:text-[1.28rem]">
                 {quest.title}
               </CardTitle>
               <CardDescription className="quest-card-desc min-h-[3.9em] line-clamp-3 text-[14px] leading-snug text-white/72">
-                {quest.description || "\u00a0"}
+                {cardTeaser || "\u00a0"}
               </CardDescription>
             </CardHeader>
           </div>
@@ -337,7 +340,7 @@ export function QuestCatalogCard({
             >
               <BloodBrushDrips
                 variant={
-                  propVariant === 0 ? "a" : propVariant === 1 ? "b" : "c"
+                  (["a", "b", "c"] as const)[Number(propVariant) % 3]
                 }
               />
               Оставить заявку
@@ -368,7 +371,7 @@ export function QuestCatalogCard({
         >
           <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
             <div className="relative shrink-0">
-              <div className="relative aspect-[16/12] w-full bg-muted sm:aspect-[16/11] sm:min-h-[22rem]">
+              <div className="relative aspect-[16/11] w-full bg-muted sm:aspect-[16/10] sm:min-h-[18.5rem]">
                 <Image
                   src={imageSrc}
                   alt={coverAlt}
@@ -376,34 +379,28 @@ export function QuestCatalogCard({
                   className="object-cover object-[center_18%] sm:object-[center_22%]"
                   sizes="(max-width: 768px) 100vw, 576px"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-10% via-popover/80 via-40% to-transparent to-72%" />
+                {/* Soft veil: solid only at the very bottom for type, then opens up so cover stays visible. */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-popover from-[6%] via-popover/50 via-[32%] to-transparent to-[62%]"
+                />
                 <Badge className="absolute left-3 top-3 z-[1] bg-background/90 text-foreground backdrop-blur">
                   От {formatRub(quest.price)}
                 </Badge>
               </div>
 
-              <div className="relative z-[1] -mt-12 flex min-h-0 flex-col gap-4 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-16 sm:px-5 sm:pb-5">
+              <div className="relative z-[1] -mt-14 flex min-h-0 flex-col gap-3.5 overflow-x-hidden px-4 pb-4 pt-0 sm:-mt-[4.75rem] sm:gap-4 sm:px-5 sm:pb-5">
                 <DialogHeader className="gap-2 text-left">
-                  <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] drop-shadow-sm sm:text-2xl">
+                  <DialogTitle className="quest-card-title font-sans pr-8 text-xl font-bold leading-snug tracking-[0.04em] [text-shadow:0_1px_18px_rgba(0,0,0,0.55)] sm:text-2xl">
                     {quest.title}
                   </DialogTitle>
-                  <DialogDescription
-                    className={cn(
-                      "text-sm leading-relaxed text-muted-foreground",
-                      !descExpanded && "line-clamp-2"
-                    )}
-                  >
-                    {description}
+                  <DialogDescription className="sr-only">
+                    {cardTeaser}
                   </DialogDescription>
-                  {descriptionLong ? (
-                    <button
-                      type="button"
-                      className="w-fit text-xs font-medium text-foreground/80 underline-offset-2 hover:underline"
-                      onClick={() => setDescExpanded((v) => !v)}
-                    >
-                      {descExpanded ? "Свернуть" : "Читать полностью"}
-                    </button>
-                  ) : null}
+                  <QuestDescriptionView
+                    text={description}
+                    measureKey={open}
+                  />
                 </DialogHeader>
 
                 <div className="min-w-0 space-y-3 overflow-x-hidden rounded-xl border border-border/60 bg-muted/25 p-3 sm:p-4">

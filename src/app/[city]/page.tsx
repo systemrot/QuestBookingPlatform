@@ -2,12 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { HomeCatalog } from "@/components/home-catalog";
+import { getCitySeo } from "@/config/city-seo";
 import { siteConfig } from "@/config/site";
-import {
-  getCityBySlug,
-  isCitySlug,
-  type CitySlug,
-} from "@/lib/city";
+import { isCitySlug, type CitySlug } from "@/lib/city";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -23,12 +20,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: raw } = await params;
   if (!isCitySlug(raw)) return {};
-  const city = await getCityBySlug(raw);
-  const name = city?.name ?? (raw === "oryol" ? "Орле" : "Смоленске");
-  const inCity =
-    raw === "oryol" ? "Орле" : raw === "smolensk" ? "Смоленске" : name;
-  const title = `Квесты в ${inCity}`;
-  const description = `Страшные квесты для детей и взрослых в ${inCity}. ${siteConfig.brandName} — онлайн-заявка, слоты и поддержка. Официальный партнёр «Мир квестов».`;
+  const seo = getCitySeo(raw);
+  const title = `Квесты ${seo.inCity}`;
+  const description = seo.blurb.slice(0, 160);
 
   return {
     title,

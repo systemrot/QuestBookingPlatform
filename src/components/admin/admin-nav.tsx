@@ -30,7 +30,8 @@ type NavLinkDef = {
   match: (p: string) => boolean;
   icon?: LucideIcon;
   messages?: boolean;
-  feedback?: boolean;
+  /** Soft amber accent so the item stands out in the list. */
+  accent?: boolean;
   ownerOnly?: boolean;
 };
 
@@ -80,13 +81,14 @@ const LINKS: NavLinkDef[] = [
     label: "Справка",
     match: (p) => p.startsWith("/admin/help"),
     icon: Info,
+    accent: true,
   },
   {
     href: "/admin/feedback",
     label: "Идеи",
     match: (p) => p.startsWith("/admin/feedback"),
     icon: Lightbulb,
-    feedback: true,
+    accent: true,
   },
   {
     href: "/admin/profile",
@@ -182,7 +184,7 @@ export function AdminNav({ variant, role }: Props) {
                 "shrink-0 gap-1.5",
                 active && "pointer-events-none",
                 item.href === "/" && "ml-auto",
-                item.feedback &&
+                item.accent &&
                   !active &&
                   "text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
               )}
@@ -214,7 +216,7 @@ export function AdminNav({ variant, role }: Props) {
               href={item.href}
               active={active}
               className={
-                item.feedback && !active
+                item.accent && !active
                   ? "text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
                   : undefined
               }

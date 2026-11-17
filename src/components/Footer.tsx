@@ -43,7 +43,7 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
         className={cn(
           embedded
             ? "home-split-footer-inner w-full max-w-none px-4 sm:px-6"
-            : "mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10"
+            : "mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10"
         )}
       >
         {embedded ? (
@@ -81,7 +81,24 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
               </nav>
 
               <div className="home-split-footer-col home-split-footer-contact">
-                <p className="home-split-footer-heading">Связаться с нами</p>
+                <p className="home-split-footer-heading">Города и связь</p>
+                <ul className="home-split-footer-links mb-3">
+                  {siteConfig.citiesServed.map((c) => (
+                    <li key={c.slug}>
+                      <Link href={`/${c.slug}`}>{c.name}</Link>
+                    </li>
+                  ))}
+                </ul>
+                {siteConfig.contact.telephone.trim() ? (
+                  <p className="mb-3 text-[13px] text-white/70">
+                    <a
+                      href={`tel:${siteConfig.contact.telephone.replace(/\s+/g, "")}`}
+                      className="hover:text-white"
+                    >
+                      {siteConfig.contact.telephone}
+                    </a>
+                  </p>
+                ) : null}
                 <ul className="home-split-footer-socials">
                   <li>
                     <a
@@ -173,8 +190,30 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
 
                 <div className="shrink-0">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Связаться с нами
+                    Города и связь
                   </p>
+                  <ul className="mb-3 flex flex-col gap-2 text-sm">
+                    {siteConfig.citiesServed.map((c) => (
+                      <li key={c.slug}>
+                        <Link
+                          href={`/${c.slug}`}
+                          className="text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          {c.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {siteConfig.contact.telephone.trim() ? (
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      <a
+                        href={`tel:${siteConfig.contact.telephone.replace(/\s+/g, "")}`}
+                        className="transition-colors hover:text-foreground"
+                      >
+                        {siteConfig.contact.telephone}
+                      </a>
+                    </p>
+                  ) : null}
                   <ul className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <li>
                       <a

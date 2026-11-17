@@ -9,7 +9,11 @@ export default async function AdminQuestsPage() {
     listCities(),
     dbUrgent((prisma) =>
       prisma.quest.findMany({
-        orderBy: [{ city: { name: "asc" } }, { title: "asc" }],
+        orderBy: [
+          { city: { name: "asc" } },
+          { sortOrder: "asc" },
+          { title: "asc" },
+        ],
         select: {
           id: true,
           title: true,
@@ -18,6 +22,8 @@ export default async function AdminQuestsPage() {
           imageAlt: true,
           price: true,
           cityId: true,
+          sortOrder: true,
+          archivedAt: true,
           city: { select: { name: true } },
         },
       })
@@ -29,7 +35,8 @@ export default async function AdminQuestsPage() {
       <div>
         <h1 className="font-heading text-2xl font-semibold">Квесты</h1>
         <p className="text-sm text-muted-foreground">
-          Создание и правка сценариев: город, цена, фото, описание.
+          Создание и правка сценариев: город, цена, фото, описание. С главной
+          квесты убираются в архив; удаление — только из архива.
         </p>
       </div>
       <QuestsManager
@@ -43,6 +50,8 @@ export default async function AdminQuestsPage() {
           price: q.price.toString(),
           cityId: q.cityId,
           cityName: q.city.name,
+          sortOrder: q.sortOrder,
+          archivedAt: q.archivedAt?.toISOString() ?? null,
         }))}
       />
     </main>

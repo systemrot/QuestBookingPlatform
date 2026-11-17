@@ -92,6 +92,7 @@ export async function ensureAllQuestSlotGrids(
   from: Date = new Date()
 ): Promise<void> {
   const quests = await client.quest.findMany({
+    where: { archivedAt: null },
     select: { id: true, price: true },
   });
   for (const q of quests) {

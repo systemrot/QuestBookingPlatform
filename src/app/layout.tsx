@@ -21,37 +21,49 @@ const siteUrl = getSiteUrl();
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin", "cyrillic"],
+  // Body: show immediately — system sans is close enough until Montserrat arrives.
   display: "swap",
+  preload: true,
 });
 
-/** Rhytmic / Rhythmic Cyrillic — brush display with full Cyrillic. */
+/**
+ * Brush display (brand / hero). `block` avoids a flash of system UI font;
+ * woff2 keeps the invisible window short (~4× smaller than the old OTF).
+ */
 const rhythmic = localFont({
-  src: "./fonts/Rhythmic-Cyrillic.otf",
+  src: "./fonts/Rhythmic-Cyrillic.woff2",
   variable: "--font-rhythmic",
-  display: "swap",
+  display: "block",
   weight: "400",
   style: "normal",
+  preload: true,
+  adjustFontFallback: "Arial",
 });
 
 /** Kept as fallback while comparing display faces. */
 const unutterable = localFont({
-  src: "./fonts/Unutterable-Italic.otf",
+  src: "./fonts/Unutterable-Italic.woff2",
   variable: "--font-unutterable",
-  display: "swap",
+  display: "block",
   weight: "400",
   style: "normal",
+  preload: false,
+  adjustFontFallback: "Arial",
 });
 
 const rubikDirt = Rubik_Dirt({
   variable: "--font-rubik-dirt",
   weight: "400",
   subsets: ["latin", "cyrillic"],
-  display: "swap",
+  display: "block",
+  preload: false,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

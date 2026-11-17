@@ -53,10 +53,10 @@ export async function getAvailableSlots(questId: string, dateStr: string) {
   const quest = await dbUrgent((prisma) =>
     prisma.quest.findUnique({
       where: { id: questId },
-      select: { id: true, price: true },
+      select: { id: true, price: true, archivedAt: true },
     })
   );
-  if (!quest) {
+  if (!quest || quest.archivedAt) {
     return { error: "Квест не найден." as const };
   }
 

@@ -13,6 +13,10 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src/generated/**",
+    "scripts/**",
+    "add-*.js",
+    "list-quests.js",
+    "update-quest*.js",
   ]),
 ]);
 

@@ -33,8 +33,8 @@ export function getQuestCatalog(cityId: string) {
     () =>
       dbUrgent((prisma) =>
         prisma.quest.findMany({
-          where: { cityId },
-          orderBy: { title: "asc" },
+          where: { cityId, archivedAt: null },
+          orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
         })
       )
   );
