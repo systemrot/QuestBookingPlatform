@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Send } from "lucide-react";
 
+import { CityNavLink } from "@/components/city-nav-link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +86,7 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                 <ul className="home-split-footer-links mb-3">
                   {siteConfig.citiesServed.map((c) => (
                     <li key={c.slug}>
-                      <Link href={`/${c.slug}`}>{c.name}</Link>
+                      <CityNavLink slug={c.slug}>{c.name}</CityNavLink>
                     </li>
                   ))}
                 </ul>
@@ -195,12 +196,12 @@ export function Footer({ embedded = false }: { embedded?: boolean }) {
                   <ul className="mb-3 flex flex-col gap-2 text-sm">
                     {siteConfig.citiesServed.map((c) => (
                       <li key={c.slug}>
-                        <Link
-                          href={`/${c.slug}`}
+                        <CityNavLink
+                          slug={c.slug}
                           className="text-muted-foreground transition-colors hover:text-foreground"
                         >
                           {c.name}
-                        </Link>
+                        </CityNavLink>
                       </li>
                     ))}
                   </ul>

@@ -20,13 +20,23 @@ export const proxy = auth((req) => {
   if (path === "/") {
     const cookieCity = req.cookies.get(CITY_COOKIE)?.value;
     const slug = isCitySlug(cookieCity ?? "") ? cookieCity! : "oryol";
-    return NextResponse.redirect(new URL(`/${slug}`, req.url), 308);
+    // 307: city depends on cookie — must not be cached as a permanent 308.
+    return NextResponse.redirect(new URL(`/${slug}`, req.url), 307);
   }
 
   const citySeg = path.replace(/^\//, "").split("/")[0] ?? "";
   if (isCitySlug(citySeg)) {
     const res = NextResponse.next();
-    if (req.cookies.get(CITY_COOKIE)?.value !== citySeg) {
+    // Sync preference only on real document navigations (typed URL, refresh,
+    // full page load). Never on <Link> prefetch / RSC prefetch — that was
+    // silently flipping qb_city (e.g. admin footer → home jumps to Smolensk).
+    const isDocumentNav =
+      req.headers.get("sec-fetch-mode") === "navigate" &&
+      req.headers.get("sec-fetch-dest") === "document";
+    if (
+      isDocumentNav &&
+      req.cookies.get(CITY_COOKIE)?.value !== citySeg
+    ) {
       res.cookies.set(CITY_COOKIE, citySeg, {
         path: "/",
         maxAge: 60 * 60 * 24 * 365,
