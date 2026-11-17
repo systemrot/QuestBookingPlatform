@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { invalidateQuestCatalog, invalidateAdminData } from "@/lib/cache";
 import { dbUrgent } from "@/lib/prisma";
+import { validateQuestImageAlt } from "@/lib/quest-image-alt";
 import { isOwner } from "@/lib/roles";
 
 function ensureOwner() {
@@ -33,6 +34,7 @@ export async function upsertQuest(input: {
   title: string;
   description: string;
   image: string;
+  imageAlt: string;
   price: string;
   cityId: string;
 }) {
@@ -42,6 +44,9 @@ export async function upsertQuest(input: {
   const title = input.title.trim();
   const description = input.description.trim() || null;
   const image = input.image.trim() || null;
+  const altCheck = validateQuestImageAlt(input.imageAlt ?? "");
+  if (!altCheck.ok) return { error: altCheck.error };
+  const imageAlt = altCheck.value;
   const price = parsePrice(input.price);
   const cityId = input.cityId.trim();
 
@@ -61,13 +66,13 @@ export async function upsertQuest(input: {
       await dbUrgent((prisma) =>
         prisma.quest.update({
           where: { id: input.id },
-          data: { title, description, image, price, cityId },
+          data: { title, description, image, imageAlt, price, cityId },
         })
       );
     } else {
       await dbUrgent((prisma) =>
         prisma.quest.create({
-          data: { title, description, image, price, cityId },
+          data: { title, description, image, imageAlt, price, cityId },
         })
       );
     }
@@ -75,6 +80,8 @@ export async function upsertQuest(input: {
     invalidateQuestCatalog();
     invalidateAdminData();
     revalidatePath("/");
+    revalidatePath("/oryol");
+    revalidatePath("/smolensk");
     revalidatePath("/admin/quests");
     return { success: true as const };
   } catch (e) {
@@ -93,6 +100,8 @@ export async function deleteQuest(id: string) {
     invalidateQuestCatalog();
     invalidateAdminData();
     revalidatePath("/");
+    revalidatePath("/oryol");
+    revalidatePath("/smolensk");
     revalidatePath("/admin/quests");
     return { success: true as const };
   } catch (e) {

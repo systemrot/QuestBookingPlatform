@@ -46,6 +46,8 @@ import { BloodBrushDrips } from "@/components/blood-brush-drips";
 import { PartySizeStepper } from "@/components/party-size-stepper";
 import { QuestCardProp } from "@/components/quest-card-prop";
 import { formatRub, formatRu } from "@/lib/locale";
+import { resolveQuestImage } from "@/lib/quest-image";
+import { fallbackQuestImageAlt } from "@/lib/quest-image-alt";
 import { displayRuPhoneFromStored } from "@/lib/ru-phone";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -96,6 +98,8 @@ export type QuestForCatalog = {
   title: string;
   description: string | null;
   image: string | null;
+  imageAlt?: string | null;
+  cityName?: string | null;
   price: string;
   /** Decorative prop index from reference (0 key, 1 stain, 2 badge). */
   propVariant?: 0 | 1 | 2;
@@ -110,25 +114,8 @@ type SessionInfo = {
 const QUEST_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&w=1200&q=80";
 
-/** Map legacy public cover paths to refreshed cinematic assets. */
-const COVER_ALIASES: Record<string, string> = {
-  "/Kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/Dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
-  "/Povorot.jpg": "/brand/covers/povorot-v4.jpg",
-  "/kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
-  "/povorot.jpg": "/brand/covers/povorot-v4.jpg",
-  "/brand/covers/kluch.jpg": "/brand/covers/kluch-v3.jpg",
-  "/brand/covers/dyshi.jpg": "/brand/covers/dyshi-v5.jpg",
-  "/brand/covers/povorot.jpg": "/brand/covers/povorot-v4.jpg",
-  "/brand/covers/dyshi-v3.jpg": "/brand/covers/dyshi-v5.jpg",
-  "/brand/covers/dyshi-v4.jpg": "/brand/covers/dyshi-v5.jpg",
-  "/brand/covers/povorot-v3.jpg": "/brand/covers/povorot-v4.jpg",
-};
-
-function resolveQuestImage(src: string | null | undefined) {
-  if (!src) return QUEST_IMAGE_FALLBACK;
-  return COVER_ALIASES[src] ?? src;
+function resolveQuestImageSrc(src: string | null | undefined) {
+  return resolveQuestImage(src) ?? QUEST_IMAGE_FALLBACK;
 }
 
 type Step = "schedule" | "details" | "success";
@@ -151,7 +138,7 @@ export function QuestCatalogCard({
   const [submitting, setSubmitting] = React.useState(false);
   const [descExpanded, setDescExpanded] = React.useState(false);
   const [imageSrc, setImageSrc] = React.useState(() =>
-    resolveQuestImage(quest.image)
+    resolveQuestImageSrc(quest.image)
   );
 
   const [name, setName] = React.useState("");
@@ -170,9 +157,12 @@ export function QuestCatalogCard({
     "Выберите удобный день и время — менеджер свяжется для подтверждения.";
   const descriptionLong = description.length > 160;
   const canBook = !session || session.role === "USER";
+  const coverAlt =
+    quest.imageAlt?.trim() ||
+    fallbackQuestImageAlt(quest.title, quest.cityName);
 
   React.useEffect(() => {
-    setImageSrc(resolveQuestImage(quest.image));
+    setImageSrc(resolveQuestImageSrc(quest.image));
   }, [quest.image]);
 
   React.useEffect(() => {
@@ -311,7 +301,7 @@ export function QuestCatalogCard({
             <div className="quest-card-media relative aspect-[16/12] w-full shrink-0 overflow-hidden bg-[oklch(0.1_0.012_25)]">
               <Image
                 src={imageSrc}
-                alt=""
+                alt={coverAlt}
                 fill
                 className="quest-card-media-img object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -381,7 +371,7 @@ export function QuestCatalogCard({
               <div className="relative aspect-[16/12] w-full bg-muted sm:aspect-[16/11] sm:min-h-[22rem]">
                 <Image
                   src={imageSrc}
-                  alt=""
+                  alt={coverAlt}
                   fill
                   className="object-cover object-[center_18%] sm:object-[center_22%]"
                   sizes="(max-width: 768px) 100vw, 576px"

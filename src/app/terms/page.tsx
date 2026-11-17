@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Условия использования",
   description: "Правила пользования сервисом бронирования квестов НеКвест.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {

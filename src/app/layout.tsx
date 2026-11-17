@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { DetectTelegramBrowser } from "@/components/detect-telegram-browser";
 import { Footer } from "@/components/Footer";
+import { OrganizationJsonLd } from "@/components/organization-json-ld";
 import { SiteHeader } from "@/components/site-header";
 import { getSiteUrl, siteConfig } from "@/config/site";
 import { Toaster } from "@/components/ui/sonner";
@@ -80,9 +81,6 @@ export const metadata: Metadata = {
     shortcut: [{ url: "/favicon.ico" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "ru_RU",
@@ -138,6 +136,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-black text-foreground">
+        <OrganizationJsonLd />
         <DetectTelegramBrowser />
         <div className="site-chrome-header">
           <SiteHeader />

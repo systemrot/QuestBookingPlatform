@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Политика конфиденциальности",
   description: "Как НеКвест обрабатывает персональные данные пользователей.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

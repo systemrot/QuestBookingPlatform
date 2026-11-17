@@ -8,10 +8,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     {
-      url: siteUrl,
+      url: `${siteUrl}/oryol`,
       lastModified,
       changeFrequency: "daily",
       priority: 1,
+    },
+    {
+      url: `${siteUrl}/smolensk`,
+      lastModified,
+      changeFrequency: "daily",
+      priority: 1,
+    },
+    {
+      url: siteUrl,
+      lastModified,
+      changeFrequency: "daily",
+      priority: 0.9,
     },
     {
       url: `${siteUrl}/about`,

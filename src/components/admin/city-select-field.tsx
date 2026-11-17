@@ -23,6 +23,7 @@ type Props = {
   className?: string;
 };
 
+/** Full-width city select aligned with admin Input height/style. */
 export function CitySelectField({
   cities,
   value,
@@ -44,9 +45,10 @@ export function CitySelectField({
     >
       <SelectTrigger
         id={id}
-        size="sm"
         className={cn(
-          "h-8 w-full justify-between border-input bg-transparent px-2.5 text-sm shadow-none dark:bg-input/30",
+          "h-9 w-full min-w-0 justify-between gap-2 border-input bg-transparent px-2.5 text-sm shadow-none",
+          "dark:bg-input/30",
+          "*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:text-left",
           className
         )}
       >
@@ -55,14 +57,17 @@ export function CitySelectField({
       <SelectContent
         align="start"
         sideOffset={4}
-        alignItemWithTrigger
-        className="w-(--anchor-width) rounded-xl border border-border/60 bg-popover/95 p-1 shadow-lg ring-1 ring-foreground/5 backdrop-blur-md"
+        alignItemWithTrigger={false}
+        className={cn(
+          "z-50 w-(--anchor-width) min-w-(--anchor-width) max-w-[min(100vw-2rem,24rem)]",
+          "rounded-xl border border-border/60 bg-popover/95 p-1 shadow-lg ring-1 ring-foreground/5 backdrop-blur-md"
+        )}
       >
         {cities.map((c) => (
           <SelectItem
             key={c.id}
             value={c.id}
-            className="rounded-lg py-2 pl-2.5 text-sm"
+            className="rounded-lg py-2 pr-8 pl-2.5 text-sm"
           >
             {c.name}
           </SelectItem>

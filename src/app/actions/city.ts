@@ -10,5 +10,6 @@ export async function selectCity(slug: string) {
   }
   await setCityCookie(slug as CitySlug);
   revalidatePath("/", "layout");
+  revalidatePath(`/${slug}`);
   return { success: true as const, slug: slug as CitySlug };
 }

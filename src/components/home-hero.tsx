@@ -9,22 +9,36 @@ import { MarkHomeSplit } from "@/components/mark-home-split";
 import { SiteNav } from "@/components/site-nav";
 import { siteConfig } from "@/config/site";
 import {
+  getCityBySlug,
   getSelectedCity,
   getSelectedCitySlug,
+  isCitySlug,
   listCities,
+  type CitySlug,
 } from "@/lib/city";
 
 type HomeHeroProps = {
   children?: ReactNode;
   catalogCount?: number;
+  /** URL city wins over cookie so /smolensk label matches catalog. */
+  citySlug?: CitySlug;
 };
 
-export async function HomeHero({ children, catalogCount = 0 }: HomeHeroProps) {
-  const [session, cities, currentSlug, city] = await Promise.all([
+export async function HomeHero({
+  children,
+  catalogCount = 0,
+  citySlug,
+}: HomeHeroProps) {
+  const cookieSlug = await getSelectedCitySlug();
+  const currentSlug =
+    citySlug && isCitySlug(citySlug) ? citySlug : cookieSlug;
+
+  const [session, cities, city] = await Promise.all([
     auth(),
     listCities(),
-    getSelectedCitySlug(),
-    getSelectedCity().catch(() => null),
+    getCityBySlug(currentSlug).then(
+      (row) => row ?? getSelectedCity().catch(() => null)
+    ),
   ]);
 
   const cityLabel = city?.name ?? "ваш город";

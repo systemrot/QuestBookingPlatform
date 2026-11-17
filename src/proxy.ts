@@ -4,11 +4,38 @@ import { authConfig } from "@/auth.config";
 import { isStaff } from "@/lib/roles";
 import { NextResponse } from "next/server";
 
+/** Keep in sync with src/lib/city.ts — do not import city.ts (pulls DB into edge). */
+const CITY_COOKIE = "qb_city";
+
+function isCitySlug(value: string): value is "oryol" | "smolensk" {
+  return value === "oryol" || value === "smolensk";
+}
+
 const { auth } = NextAuth(authConfig);
 
 export const proxy = auth((req) => {
   const path = req.nextUrl.pathname;
   const session = req.auth;
+
+  if (path === "/") {
+    const cookieCity = req.cookies.get(CITY_COOKIE)?.value;
+    const slug = isCitySlug(cookieCity ?? "") ? cookieCity! : "oryol";
+    return NextResponse.redirect(new URL(`/${slug}`, req.url), 308);
+  }
+
+  const citySeg = path.replace(/^\//, "").split("/")[0] ?? "";
+  if (isCitySlug(citySeg)) {
+    const res = NextResponse.next();
+    if (req.cookies.get(CITY_COOKIE)?.value !== citySeg) {
+      res.cookies.set(CITY_COOKIE, citySeg, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+    return res;
+  }
 
   const isUserOnly =
     path === "/profile" ||
@@ -51,6 +78,9 @@ export const proxy = auth((req) => {
 
 export const config = {
   matcher: [
+    "/",
+    "/oryol",
+    "/smolensk",
     "/profile",
     "/profile/:path*",
     "/bookings",

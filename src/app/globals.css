@@ -268,7 +268,7 @@ body:has([data-home-split-root]) main {
   position: relative;
   display: grid;
   grid-template-columns: var(--home-split-left) minmax(0, 1fr);
-  grid-template-rows: minmax(100svh, auto);
+  grid-template-rows: auto;
   grid-template-areas: "stage main";
   width: 100%;
   max-width: 100%;
@@ -277,9 +277,18 @@ body:has([data-home-split-root]) main {
   overflow-x: clip;
 }
 
+/*
+ * Scenic frame stays viewport-tall and sticky while the catalog column
+ * grows — cabin/character no longer stretch with quest count.
+ */
 .home-split-scene {
-  position: absolute;
-  inset: 0;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  width: 100%;
+  height: 100svh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
@@ -399,11 +408,13 @@ body:has([data-home-split-root]) main {
 
 .home-split-stage {
   grid-area: stage;
+  grid-row: 1;
   position: relative;
   z-index: 1;
+  align-self: stretch;
   overflow: visible;
   pointer-events: none;
-  min-height: 0;
+  min-height: 100svh;
 }
 
 /* Character is % of the full scenic plate — stays glued to the cabin */
@@ -515,13 +526,14 @@ body:has([data-home-split-root]) main {
 
 .home-split-main {
   grid-area: main;
+  grid-row: 1;
   position: relative;
   z-index: 15;
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
   min-width: 0;
-  min-height: 0;
+  min-height: 100svh;
   max-width: 100%;
   /* Shift content left toward the character — close the empty gap */
   margin-left: -3.75rem;
@@ -1003,7 +1015,13 @@ body:has([data-home-split-root]) main {
   }
 
   .home-split-scene {
+    /* Reset desktop sticky frame — mobile uses a fixed art band */
+    grid-column: auto;
+    grid-row: auto;
+    position: absolute;
     inset: 0;
+    align-self: auto;
+    width: auto;
     height: auto;
     background: #0a0707;
   }
@@ -1024,12 +1042,14 @@ body:has([data-home-split-root]) main {
 
   .home-split-stage {
     grid-area: stage;
+    grid-row: auto;
     /* Shorter lead-in so title sits higher on the art */
     height: calc(var(--home-mobile-art-h) * 0.58);
     min-height: calc(var(--home-mobile-art-h) * 0.58);
     max-height: none;
     min-width: 0;
     width: 100%;
+    align-self: auto;
   }
 
   .home-split-character {
@@ -1089,11 +1109,13 @@ body:has([data-home-split-root]) main {
 
   .home-split-main {
     grid-area: main;
+    grid-row: auto;
     margin-left: 0;
     /* Keep title below the face — only overlap the lower art / fade */
     margin-top: calc(-5.5rem + 30px);
     padding: 0 1rem 1.75rem;
     min-width: 0;
+    min-height: 0;
     width: 100%;
     max-width: 100%;
     background: transparent;

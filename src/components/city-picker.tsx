@@ -56,6 +56,7 @@ export function CityPicker({ cities, currentSlug, className }: Props) {
         toast.error(res.error);
         return;
       }
+      router.push(`/${next}`);
       router.refresh();
     });
   };
