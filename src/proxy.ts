@@ -19,9 +19,14 @@ export const proxy = auth((req) => {
 
   if (path === "/") {
     const cookieCity = req.cookies.get(CITY_COOKIE)?.value;
-    const slug = isCitySlug(cookieCity ?? "") ? cookieCity! : "oryol";
-    // 307: city depends on cookie — must not be cached as a permanent 308.
-    return NextResponse.redirect(new URL(`/${slug}`, req.url), 307);
+    const hasCityPref = isCitySlug(cookieCity ?? "");
+    const slug = hasCityPref ? cookieCity! : "oryol";
+    // No cookie (Googlebot / first visit): 301 → default city so `/` consolidates in search.
+    // With cookie: 307 → chosen city (must not be cached as permanent for the wrong city).
+    return NextResponse.redirect(
+      new URL(`/${slug}`, req.url),
+      hasCityPref ? 307 : 301
+    );
   }
 
   // City preference is written only by selectCity / CityNavLink — never here.

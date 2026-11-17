@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * Fallback catalog if proxy redirect is bypassed.
- * Normal browser hits to `/` get HTTP 307 → /oryol|/smolensk in src/proxy.ts.
+ * Normal hits to `/`: 301 → /oryol (no cookie) or 307 → cookie city — see src/proxy.ts.
  */
 export default async function HomePage() {
   const slug = await getSelectedCitySlug();

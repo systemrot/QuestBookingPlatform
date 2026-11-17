@@ -19,12 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1,
     },
-    {
-      url: siteUrl,
-      lastModified,
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
+    // Do not list `/` — it only redirects to a city; city URLs are the indexable homes.
     {
       url: `${siteUrl}/about`,
       lastModified,
